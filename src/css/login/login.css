@@ -1,0 +1,16 @@
+/* Hide the native password eye icon in all browsers */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-webkit-credentials-auto-fill-button,
+input[type="password"]::-webkit-contacts-auto-fill-button {
+  display: none !important;
+}
+/* Optional: Hide all default clear/eye in input fields in Edge */
+input[type="password"]::-ms-clear {
+  display: none !important;
+}
+.eye-btn:hover{
+    z-index: 100 !important;
+    display: inline !important;
+    background-color: none !important;
+    color: black ;
+}

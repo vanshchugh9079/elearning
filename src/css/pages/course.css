@@ -1,0 +1,13 @@
+.btn-purple {
+    background-color: #9333ea;
+    border: none;
+}
+
+.card-img-top {
+    height: 200px !important;
+    width: 200px !important;
+    object-fit: fill;
+}
+.btn-purple:hover {
+    background-color: #7e22ce;
+}

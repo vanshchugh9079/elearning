@@ -1,0 +1,30 @@
+.footer {
+    background-color: #8a2be2; /* Purple background color */
+    padding: 20px 0;
+    text-align: center;
+    color: white;
+  }
+  
+  .footer-content p {
+    margin: 5px 0;
+  }
+  
+  .footer-content .heart {
+    color: red;
+  }
+  
+  .social-icons {
+    margin-top: 10px;
+  }
+  
+  .social-icons .icon {
+    margin: 0 10px;
+    text-decoration: none;
+    color: white;
+    font-size: 24px;
+    transition: color 0.3s;
+  }
+  
+  .social-icons .icon:hover {
+    color: #ddd; /* Light grey on hover */
+  }
