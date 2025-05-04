@@ -13,7 +13,7 @@ const CourseShower = () => {
   useEffect(() => {
     const getCourse = async () => {
       try {
-        const response = await api.get(`course/${id}`, {
+        const response = await api.get(`course/get/${id}`, {
           headers: {
             'Authorization': `Bearer ${user.token}`
           }

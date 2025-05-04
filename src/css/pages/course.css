@@ -11,3 +11,13 @@
 .btn-purple:hover {
     background-color: #7e22ce;
 }
+.btn-purple {
+    background-color: #9333ea;
+    border: none;
+    transition: background 0.3s ease;
+  }
+  
+  .btn-purple:hover {
+    background-color: #7e22ce;
+  }
+  

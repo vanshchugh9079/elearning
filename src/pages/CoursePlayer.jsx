@@ -1,55 +1,92 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import { useSelector } from 'react-redux';
+import { useParams } from 'react-router-dom';
+import { api } from '../utils/constant';
 
 const LecturePlayer = () => {
-  const [activeLecture, setActiveLecture] = useState(2);
+  const [activeLecture, setActiveLecture] = useState(null);
+  const [lecture, setLecture] = useState([]);
+  const { user } = useSelector(state => state.user);
+  const { id } = useParams();
 
-  const lectures = [
-    { id: 1, title: 'Lecture 1', description: 'Intro to Gmail setup', video: 'video1.mp4' },
-    { id: 2, title: 'Lecture 2', description: 'Generate Gmail password', video: 'video2.mp4' },
-    { id: 3, title: 'Lecture 3', description: 'Two-step verification', video: 'video3.mp4' },
-    { id: 4, title: 'Lecture 4', description: 'Password recovery options', video: 'video4.mp4' },
-  ];
+  useEffect(() => {
+    const fetchLectures = async () => {
+      try {
+        const response = await api.get(`course/get/${id}`, {
+          headers: {
+            'Authorization': `Bearer ${user.token}`
+          }
+        });
+        const allLectures = response.data.data.lectures.map((data, index) => ({
+          ...data,
+          id: index + 1
+        }));
+        setLecture(allLectures);
+        setActiveLecture(1);
+      } catch (error) {
+        console.error("Error fetching lectures:", error);
+      }
+    };
+    fetchLectures();
+  }, [id, user.token]);
 
-  const currentLecture = lectures.find((lec) => lec.id === activeLecture);
+  const currentLecture = lecture.find((lec) => lec.id === activeLecture);
 
   return (
     <div className="container mt-2">
       <div className="row">
-        {/* Sidebar */}
         <div className="col-md-3">
           <div className="list-group">
-            {lectures.map((lecture) => (
+            {lecture.length > 0 && lecture.map((lect) => (
               <button
-                key={lecture.id}
-                className={`list-group-item list-group-item-action text-start ${activeLecture === lecture.id ? 'active' : ''}`}
-                onClick={() => setActiveLecture(lecture.id)}
+                key={lect.id}
+                className={`list-group-item list-group-item-action text-start ${activeLecture === lect.id ? 'active' : ''}`}
+                onClick={() => setActiveLecture(lect.id)}
               >
-                <strong>{lecture.title}</strong>
+                {
+                  console.log(lect)
+                }
+                <strong>{lect.title}</strong>
                 <br />
-                <small className="text-muted">{lecture.description}</small>
+                <small className="text-muted">{lect.description}</small>
               </button>
             ))}
           </div>
         </div>
-
-        {/* Video Player */}
-        <div className="col-md-9">
-          <div className="card shadow rounded-4 border-0">
-            <div className="card-header bg-dark text-white">
-              <h5 className="mb-0">{currentLecture.title}</h5>
-              <small>{currentLecture.description}</small>
-            </div>
-            <div className="card-body p-0">
-              <div className="ratio ratio-16x9">
-                <video controls className="w-100 rounded-bottom" style={{ borderBottomLeftRadius: '1rem', borderBottomRightRadius: '1rem' }}>
-                  <source src={currentLecture.video} type="video/mp4" />
-                  Your browser does not support the video tag.
-                </video>
-              </div>
+        {
+          lecture.length > 0 &&
+          <div className="col-md-9">
+            <div className="card shadow rounded-4 border-0">
+              {currentLecture ? (
+                <>
+                  <div className="card-header bg-dark text-white">
+                    <h5 className="mb-0">{currentLecture.title}</h5>
+                    <small>{currentLecture.description}</small>
+                  </div>
+                  <div className="card-body p-0">
+                    <div className="ratio ratio-16x9">
+                      <video controls className="w-100 rounded-bottom" style={{ borderBottomLeftRadius: '1rem', borderBottomRightRadius: '1rem' }}>
+                        <source src={currentLecture.videos[0].url} type="video/mp4" />
+                        Your browser does not support the video tag.
+                      </video>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="card-body text-center p-5">
+                  <h5>No Lecture Selected</h5>
+                </div>
+              )}
             </div>
           </div>
-        </div>
+        }
+        {
+          lecture.length === 0 &&
+          (
+            <h5 className='text-center'>there is no Lecture</h5>
+          )
+        }
       </div>
     </div>
   );

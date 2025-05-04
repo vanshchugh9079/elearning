@@ -27,7 +27,7 @@ export default function App() {
                         <Route element={<Home />} index />
                         <Route element={<Course />} path='course' />
                         <Route element={<CourseShower />} path='course/buy/:id' />
-                        <Route element={<CoursePlayer />} path='course/:name' />
+                        <Route element={<CoursePlayer />} path='course/:id' />
                     </Route>
                 }
             </Routes>
