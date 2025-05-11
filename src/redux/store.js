@@ -3,12 +3,13 @@ import { configureStore, combineReducers } from "@reduxjs/toolkit";
 import { persistStore, persistReducer } from "redux-persist";
 import storage from "redux-persist/lib/storage"; // Uses localStorage by default
 import userSlice from "./slice/userSlice";
+import showAddModel from "./slice/showAddModel";
 
 // Combine all reducers
 const rootReducer = combineReducers({
-  user:userSlice
+  user:userSlice,
+  showAddModel:showAddModel
 });
-
 // Persist configuration
 const persistConfig = {
     key: "root",

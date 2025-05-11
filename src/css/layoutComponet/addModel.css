@@ -1,0 +1,8 @@
+.myBtn{
+    cursor: pointer !important;
+    z-index: 10000000 !important;
+    transition: all ease-in-out 0.2s !important;
+}
+.myBtn:hover{
+    transform: scale(1.1) !important;
+}
