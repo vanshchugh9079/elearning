@@ -1,8 +1,8 @@
 import Course from "../../model/Course.js"; // assuming your Course model path
 import ApiError from "../../utils/ApiError.js"; // custom error handler
 import cloudinaryUpload from "../../utils/cloudinaryUpload.js"; // assuming your cloudinary upload function
+import errorHandler from "../../utils/errorHandler.js";
 export const createCourse = async (req, res, next) => {
-  try {
     const { name ,description,price} = req.body;
     const { user } = req; // assuming you attached user in middleware after auth
     const file = req.file; // if you upload thumbnail image via multer
@@ -10,11 +10,11 @@ export const createCourse = async (req, res, next) => {
     // if (!user || user.role !== "admin") {
     //   throw new ApiError(403, "Only admins can create courses");
     // }
+
     if (!name || !file) {
       throw new ApiError(400, "Name and thumbnail are required");
     }
     let thumnail=await cloudinaryUpload(file.path)
-    console.log(thumnail);
     const course = await Course.create({
       name,
       thumbnail: {
@@ -31,9 +31,5 @@ export const createCourse = async (req, res, next) => {
       course,
       lecture:[]
     });
-
-  } catch (error) {
-    next(error);
-  }
 };
-export default createCourse;
+export default errorHandler(createCourse);

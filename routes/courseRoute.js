@@ -7,13 +7,15 @@ import { upload } from "../middleware/upload.js";
 import tokenCheck from "../middleware/tokenCheck.js";
 import createLecture from "../component/lecture/createLecture.js";
 import User from "../model/User.js";
+import deleteLecture from "../component/lecture/deleteLecture.js";
+import deleteCourse from "../component/lecture/deleteCoure.js";
 
 const router = Router();
 
 // Get full or limited course details
 let singleCourse = async (req, res) => {
     try {
-        
+
         let courseId = req.params.id;
         let user = req.user;
         // Validate courseId
@@ -62,20 +64,56 @@ let singleCourse = async (req, res) => {
 
 
 // Get all courses user has purchased
-const getYourCourse = async (req, res) => {
+const getYourPurchasedCourse = async (req, res) => {
     try {
         const user = req.user;
-        const getUser = await User.findById(user.id).populate("subscription");
+        const getUser = await User.findById(user.id)
+            .populate("subscription watchedLecture");
+
+        // Transform each course into a plain JS object and calculate watched percentage
+        const updatedSubscriptions = getUser.subscription.map((courseDoc) => {
+            const course = courseDoc.toObject(); // Convert Mongoose doc to plain object
+            let watchedLectureCount = 0;
+
+            getUser.watchedLecture.forEach((lecture) => {
+                if (lecture.course.toString() === course._id.toString()) {
+                    watchedLectureCount++;
+                }
+            });
+
+            const totalLectures = course.lectures.length || 1; // Avoid division by zero
+            const watchedPercentage = (watchedLectureCount / totalLectures) * 100;
+
+            return {
+                ...course,
+                watchedLectureCount,
+                watchedPercentage
+            };
+        });
+        
+        
         res.status(200).json({
-            data: getUser.subscription,
-            message: "Your courses fetched successfully"
+            data: updatedSubscriptions,
+            message: "Your courses with watched percentages fetched successfully"
         });
     } catch (err) {
         res.status(500).json({ message: "Error fetching user courses", error: err.message });
     }
 };
 
+
+
+
+
 // Purchase a course
+let getYourCourse = async (req, res) => {
+    const user = req.user;
+    let course = await Course.find({ createdBy: user.id })
+    res.status(200).json({
+        data: course,
+        message: "Your courses fetched successfully"
+    })
+}
 const purchaseCourse = async (req, res) => {
     try {
         const courseId = req.params.id;
@@ -108,7 +146,9 @@ router.post('/create', tokenCheck, upload.single('file'), createCourse);
 router.post("/:id/add", tokenCheck, upload.single('file'), createLecture);
 router.post("/:id/purchase", tokenCheck, errorHandler(purchaseCourse));
 router.get("/get/:id", tokenCheck, singleCourse);
-router.get("/purchased/get", tokenCheck, errorHandler(getYourCourse));
+router.get("/you", tokenCheck, errorHandler(getYourCourse))
+router.get("/purchased/get", tokenCheck, errorHandler(getYourPurchasedCourse));
 router.get("/get", errorHandler(getAllCourse));
-
+router.delete("/lecture/:id", tokenCheck, deleteLecture)
+router.delete("/:id", tokenCheck, errorHandler(deleteCourse))
 export default router;

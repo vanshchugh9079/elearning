@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+
 const courseSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -7,8 +8,10 @@ const courseSchema = new mongoose.Schema({
   },
   description: {
     type: String,
-    required: [true, "Course description is required"],
     trim: true,
+  },
+  duration: {
+    type: String,
   },
   price: {
     type: Number,
@@ -33,8 +36,14 @@ const courseSchema = new mongoose.Schema({
     {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Lecture",
-    }
+    },
   ],
+  // Live class status field
+  liveStatus: {
+    type: String,
+    enum: ["not-started", "live", "ended"],
+    default: "not-started",
+  },
 }, {
   timestamps: true,
 });

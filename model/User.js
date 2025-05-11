@@ -30,6 +30,12 @@ const userSchema = new mongoose.Schema({
         required: true,
         minlength: 6
     },
+    watchedLecture:[
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Lecture' // refers to the Lecture model
+        }
+    ],
     role: {
         type: String,
         default: 'user',
