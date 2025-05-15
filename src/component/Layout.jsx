@@ -11,7 +11,6 @@ export default function Layout() {
     const location = useLocation();
     useEffect(() => {
         setPath(location.pathname.split("/"))
-        console.log(showAddModel);
     }, [showAddModel,location])
     return (
         <div className='min-vh-100'>

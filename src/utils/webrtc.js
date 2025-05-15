@@ -11,7 +11,6 @@ export const initWebRTC = async (localVideoRef, socket, roomId, userId, onRemote
   socket.on("offer", async ({ userId: remoteUserId, offer }) => {
     const peer = createPeerConnection(socket, roomId, remoteUserId, onRemoteStream);
     peerConnections[remoteUserId] = peer;
-
     await peer.setRemoteDescription(new RTCSessionDescription(offer));
 
     // Add local tracks

@@ -8,19 +8,26 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "host":" vite --host"
+    "host": " vite --host"
   },
   "dependencies": {
+    "@daily-co/daily-js": "^0.79.0",
+    "@daily-co/daily-react": "^0.22.0",
     "@fortawesome/fontawesome-free": "^6.7.2",
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@fortawesome/react-fontawesome": "^0.2.2",
+    "@mui/icons-material": "^7.1.0",
+    "@mui/material": "^7.1.0",
     "@reduxjs/toolkit": "^2.7.0",
     "animate.css": "^4.1.1",
     "axios": "^1.9.0",
     "bootstrap": "^5.3.5",
+    "bootstrap-icons": "^1.13.1",
     "buffer": "^6.0.3",
     "global": "^4.4.0",
     "lucide-react": "^0.508.0",
+    "peerjs": "^1.5.4",
+    "process": "^0.11.10",
     "random-bytes": "^1.0.0",
     "react": "^19.0.0",
     "react-bootstrap": "^2.10.9",
@@ -41,11 +48,13 @@
     "@eslint/js": "^9.21.0",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.4.1",
     "@vitejs/plugin-react-swc": "^3.8.0",
     "eslint": "^9.21.0",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^15.15.0",
+    "rollup-plugin-node-polyfills": "^0.2.1",
     "vite": "^6.2.0"
   }
 }
