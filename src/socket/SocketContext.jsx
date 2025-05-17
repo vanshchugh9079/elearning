@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import { useSelector } from 'react-redux';
 
-const SOCKET_SERVER_URL = "http://192.168.29.73:3000"; // Change to your backend
+const SOCKET_SERVER_URL = "https://elearning-ndyp.onrender.com"; // Change to your backend
 const SocketContext = createContext();
 
 export const SocketProvider = ({ children, courseId }) => {
