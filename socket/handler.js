@@ -1,238 +1,215 @@
-// registerSocketHandler.js
-import Course from "../model/Course.js";
-import User from "../model/User.js";
+import Course from '../model/Course.js';
+import User from '../model/User.js';
 
-const rooms = {};              // courseId => array of socket IDs
-const allUser = new Map();     // userId => socket ID
-const roomUsers = {};          // courseId => array of { socketId, userId, name, micOn, videoOn }
+const rooms = {};
+const raisedHands = {};
+const chats = {};
 
 const registerSocketHandler = (io, socket) => {
   const user = socket.user;
 
-  socket.on("create-room", async ({ courseId }) => {
+  socket.on("create-room", async ({ courseId, peerId }) => {
     try {
       const course = await Course.findById(courseId);
-      if (!course) return socket.emit("error", "Course not found");
-
-      const isCreator = course.createdBy.toString() === user._id.toString();
-      if (!isCreator) return socket.emit("error", "Only the instructor can start the class");
+      if (!course) return socket.emit("error", { message: "Course not found" });
 
       if (course.liveStatus === "live") {
-        return socket.emit("error", "Class already live");
+        return socket.emit("error", { message: "Class is already live" });
       }
+
+      const subscribers = await User.find({ subscription: courseId });
 
       course.liveStatus = "live";
       await course.save();
 
-      if (!rooms[courseId]) rooms[courseId] = [];
-      if (!roomUsers[courseId]) roomUsers[courseId] = [];
+      rooms[courseId] = {
+        createdBy: user._id.toString(),
+        users: [{
+          socketId: socket.id,
+          peerId,
+          userId: user._id.toString(),
+          name: user.name,
+          email: user.email
+        }]
+      };
 
-      const subscribedUsers = await User.find({ subscription: courseId });
-      for (const subscribedUser of subscribedUsers) {
-        const subscribedSocketId = allUser.get(subscribedUser._id.toString());
-        if (subscribedSocketId) {
-          socket.to(subscribedSocketId).emit("live-class-started", {
-            courseId,
-            courseTitle: course.name,
-            message: `Live class has started for course: ${course.name}`,
+      raisedHands[courseId] = [];
+      chats[courseId] = [];
+
+      socket.join(courseId);
+
+      subscribers.forEach(sub => {
+        io.to(sub._id.toString()).emit("live-class-started", course);
+      });
+
+      io.to(courseId).emit("all-users", rooms[courseId].users);
+      io.to(courseId).emit("raised-hands", raisedHands[courseId]);
+      io.to(courseId).emit("chat-history", chats[courseId]);
+
+    } catch (err) {
+      console.error("create-room error:", err);
+      socket.emit("error", { message: "Internal server error" });
+    }
+  });
+
+  socket.on("join-room", async ({ courseId, peerId }) => {
+    try {
+      const course = await Course.findById(courseId);
+      if (!course) return socket.emit("error", { message: "Course not found" });
+
+      if (course.liveStatus !== "live") {
+        return socket.emit("error", { message: "Live class is not started" });
+      }
+
+      if (!rooms[courseId]) {
+        rooms[courseId] = {
+          createdBy: course.createdBy.toString(),
+          users: []
+        };
+      }
+
+      const existingUserIndex = rooms[courseId].users.findIndex(u => u.userId === user._id.toString());
+      
+      if (existingUserIndex !== -1) {
+        // Update existing user's connection info
+        rooms[courseId].users[existingUserIndex] = {
+          ...rooms[courseId].users[existingUserIndex],
+          socketId: socket.id,
+          peerId
+        };
+      } else {
+        // Add new user
+        const newUser = {
+          socketId: socket.id,
+          peerId,
+          userId: user._id.toString(),
+          name: user.name,
+          email: user.email
+        };
+        rooms[courseId].users.push(newUser);
+      }
+
+      socket.join(courseId);
+
+      // Notify all users in the room about the updated participant list
+      io.to(courseId).emit("all-users", rooms[courseId].users);
+      
+      // Send current state to the joining user
+      socket.emit("raised-hands", raisedHands[courseId] || []);
+      socket.emit("chat-history", chats[courseId] || []);
+
+      // Only emit user-joined for new users
+      if (existingUserIndex === -1) {
+        socket.to(courseId).emit("user-joined", rooms[courseId].users.find(u => u.userId === user._id.toString()));
+      }
+
+    } catch (err) {
+      console.error("join-room error:", err);
+      socket.emit("error", { message: "Internal server error" });
+    }
+  });
+
+  socket.on("raise-hand", ({ courseId, userId, name }) => {
+    if (!raisedHands[courseId]) {
+      raisedHands[courseId] = [];
+    }
+    
+    if (!raisedHands[courseId].includes(userId)) {
+      raisedHands[courseId].push(userId);
+      io.to(courseId).emit("raise-hand", { userId, name });
+      
+      // Notify host specifically
+      const room = rooms[courseId];
+      if (room) {
+        const host = room.users.find(u => u.userId === room.createdBy);
+        if (host) {
+          io.to(host.socketId).emit("host-notification", {
+            message: `${name} raised their hand`,
+            type: "hand-raise"
           });
         }
       }
-
-      socket.join(courseId);
-      rooms[courseId].push(socket.id);
-      roomUsers[courseId].push({
-        socketId: socket.id,
-        userId: user._id,
-        name: user.name,
-        micOn: true,
-        videoOn: true,
-      });
-
-      const otherUsers = roomUsers[courseId].filter(u => u.socketId !== socket.id);
-      socket.emit("already-joined-users", { users: otherUsers });
-
-      socket.to(courseId).emit("user-joined", {
-        socketId: socket.id,
-        userId: user._id,
-        name: user.name,
-        micOn: true,
-        videoOn: true,
-      });
-
-      allUser.set(user._id.toString(), socket.id);
-    } catch (err) {
-      console.error(err);
-      socket.emit("error", "Internal server error");
     }
   });
 
-  socket.on("join-room", async ({ courseId }) => {
-    try {
-      const course = await Course.findById(courseId);
-      if (!course) return socket.emit("error", "Course not found");
-
-      if (course.liveStatus !== "live") {
-        return socket.emit("error", "Class is not live right now");
-      }
-
-      const isSubscribed = user.subscription?.some(sub => sub.toString() === courseId);
-      if (!isSubscribed) return socket.emit("error", "Not subscribed to course");
-
-      socket.join(courseId);
-      rooms[courseId] = rooms[courseId] || [];
-      roomUsers[courseId] = roomUsers[courseId] || [];
-
-      rooms[courseId].push(socket.id);
-      roomUsers[courseId].push({
-        socketId: socket.id,
-        userId: user._id,
-        name: user.name,
-        micOn: true,
-        videoOn: true,
-      });
-
-      const otherUsers = roomUsers[courseId].filter(u => u.socketId !== socket.id);
-      socket.emit("already-joined-users", { users: otherUsers });
-
-      socket.to(courseId).emit("user-joined", {
-        socketId: socket.id,
-        userId: user._id,
-        name: user.name,
-        micOn: true,
-        videoOn: true,
-      });
-
-      allUser.set(user._id.toString(), socket.id);
-    } catch (err) {
-      console.error(err);
-      socket.emit("error", "Internal server error");
+  socket.on("lower-hand", ({ courseId, userId }) => {
+    if (raisedHands[courseId]) {
+      raisedHands[courseId] = raisedHands[courseId].filter(id => id !== userId);
+      io.to(courseId).emit("lower-hand", { userId });
     }
   });
 
-  // WebRTC signaling handlers
-  socket.on("offer", ({ courseId, targetUserId, offer }) => {
-    const targetSocketId = allUser.get(targetUserId);
-    if (targetSocketId) {
-      socket.to(targetSocketId).emit("offer", {
-        userId: user._id,
-        offer,
-      });
+  socket.on("send-message", ({ courseId, message }) => {
+    if (!chats[courseId]) {
+      chats[courseId] = [];
     }
+    
+    const fullMessage = {
+      ...message,
+      timestamp: new Date().toLocaleTimeString(),
+    };
+    
+    chats[courseId].push(fullMessage);
+    io.to(courseId).emit("receive-message", fullMessage);
   });
-
-  socket.on("answer", ({ courseId, targetUserId, answer }) => {
-    const targetSocketId = allUser.get(targetUserId);
-    if (targetSocketId) {
-      socket.to(targetSocketId).emit("answer", {
-        userId: user._id,
-        answer,
-      });
-    }
-  });
-
-  socket.on("ice-candidate", ({ courseId, targetUserId, candidate }) => {
-    const targetSocketId = allUser.get(targetUserId);
-    if (targetSocketId) {
-      socket.to(targetSocketId).emit("ice-candidate", {
-        userId: user._id,
-        candidate,
-      });
-    }
-  });
-
-  socket.on("stream-status", ({ courseId, userId, hasVideo, hasAudio }) => {
-    const userList = roomUsers[courseId];
-    if (!userList) return;
-
-    const targetUser = userList.find(u => u.userId.toString() === userId.toString());
-    if (targetUser) {
-      targetUser.videoOn = hasVideo;
-      targetUser.micOn = hasAudio;
-
-      io.to(courseId).emit("stream-status", {
-        userId,
-        hasVideo,
-        hasAudio
-      });
-    }
-  });
-
-  socket.on("raise-hand", ({ courseId, userId }) => {
-    socket.to(courseId).emit("hand-raised", { userId });
-  });
-
-  socket.on("leave-room", ({ courseId, userId }) => {
-    if (rooms[courseId]) {
-      rooms[courseId] = rooms[courseId].filter(id => id !== socket.id);
-    }
-    if (roomUsers[courseId]) {
-      roomUsers[courseId] = roomUsers[courseId].filter(u => u.socketId !== socket.id);
-    }
-
-    socket.to(courseId).emit("user-left", {
-      socketId: socket.id,
-      userId,
-      name: user.name,
-    });
-    socket.leave(courseId);
-  });
-
-  socket.on("end-room", async ({ courseId }) => {
-    try {
-      const course = await Course.findById(courseId);
-      if (!course) return;
-
-      if (course.createdBy.toString() !== user._id.toString()) {
-        return socket.emit("error", "Only the instructor can end the class");
-      }
-
-      course.liveStatus = "ended";
-      await course.save();
-
-      io.to(courseId).emit("room-ended", { message: "Class ended by instructor." });
-
-      rooms[courseId] = [];
-      roomUsers[courseId] = [];
-    } catch (err) {
-      console.error(err);
-    }
-  });
-
   socket.on("disconnect", async () => {
     try {
       for (const courseId in rooms) {
-        const index = rooms[courseId].indexOf(socket.id);
+        const room = rooms[courseId];
+        const index = room.users.findIndex(u => u.socketId === socket.id);
+
         if (index !== -1) {
-          rooms[courseId].splice(index, 1);
-          roomUsers[courseId] = roomUsers[courseId]?.filter(u => u.socketId !== socket.id);
+          const userLeft = room.users[index];
+          
+          // Remove user from room
+          room.users.splice(index, 1);
 
-          const course = await Course.findById(courseId);
-          if (course && course.createdBy.toString() === user._id.toString()) {
-            course.liveStatus = "ended";
-            await course.save();
+          // Notify others
+          io.to(courseId).emit("user-left", {
+            socketId: socket.id,
+            userId: userLeft.userId,
+            name: userLeft.name,
+          });
 
-            io.to(courseId).emit("room-ended", {
-              courseId,
-              message: "Class ended because the instructor disconnected.",
-            });
-
-            rooms[courseId] = [];
-            roomUsers[courseId] = [];
-          } else {
-            socket.to(courseId).emit("user-left", {
-              socketId: socket.id,
-              userId: user._id,
-              name: user.name,
-            });
+          // Remove raised hand if present
+          if (raisedHands[courseId]) {
+            raisedHands[courseId] = raisedHands[courseId].filter(id => id !== userLeft.userId);
+            io.to(courseId).emit("lower-hand", { userId: userLeft.userId });
           }
+
+          // Host disconnected - end room
+          if (room.createdBy === userLeft.userId && room.users.length === 0) {
+            await Course.findByIdAndUpdate(courseId, { liveStatus: "ended" });
+            io.to(courseId).emit("room-ended", {
+              message: "Class ended because the host disconnected",
+            });
+            delete rooms[courseId];
+            delete raisedHands[courseId];
+            delete chats[courseId];
+          }
+
+          // Update participant list for remaining users
+          if (room.users.length > 0) {
+            io.to(courseId).emit("all-users", room.users);
+          }
+
+          break;
         }
       }
-
-      allUser.delete(user._id.toString());
-      console.log(`${user.name} (${user._id}) disconnected.`);
     } catch (err) {
-      console.error("Error on disconnect:", err);
+      console.error("disconnect error:", err);
+    }
+  });
+
+  socket.on("end-call", async ({ courseId }) => {
+    try {
+      await Course.findByIdAndUpdate(courseId, { liveStatus: "ended" });
+      io.to(courseId).emit("room-ended", { message: "Class ended by host" });
+      delete rooms[courseId];
+      delete raisedHands[courseId];
+      delete chats[courseId];
+    } catch (err) {
+      console.error("end-call error:", err);
     }
   });
 };
