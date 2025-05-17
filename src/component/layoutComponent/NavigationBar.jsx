@@ -20,9 +20,10 @@ const NavigationBar = () => {
         if (!socket) return;
 
         const onLiveClass = (obj) => {
+            console.log(obj)
             toast.info(
                 <div>
-                    <strong>📢 {obj.courseTitle}</strong>
+                    <strong>📢 {obj.name}</strong>
                     <div>Live class started</div>
                     <div className='mt-1 d-flex justify-content-between'>
                         <button
