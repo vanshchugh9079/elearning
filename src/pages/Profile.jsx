@@ -59,7 +59,8 @@ const ProfilePage = () => {
   };
 
   const handleLogout = () => {
-    alert('Logged out');
+    window.localStorage.clear();
+    navigate("/");
   };
 
   return (

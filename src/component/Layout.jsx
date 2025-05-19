@@ -4,7 +4,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import Footer from './layoutComponent/Footer'
 import AddCourse from './model/AddCourse'
 import { useSelector } from 'react-redux'
-
+import "../css/layout.css"
 export default function Layout() {
     let { showAddModel } = useSelector(state => state.showAddModel)
     let [path, setPath] = useState([])
@@ -13,7 +13,7 @@ export default function Layout() {
         setPath(location.pathname.split("/"))
     }, [showAddModel,location])
     return (
-        <div className='min-vh-100'>
+        <div className=' full-height'>
 
             {
                 !path.includes("live") &&

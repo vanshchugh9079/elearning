@@ -1,0 +1,7 @@
+:root {
+    --vh: 100%;
+  }
+  
+  .full-height {
+    height: calc(var(--vh, 1vh) * 100) !important;
+  }

@@ -1,9 +1,38 @@
+*{
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+.side-panel {
+  transition: width 0.3s ease;
+}
+
+.chat-container {
+  transition: opacity 0.3s ease;
+}
 .google-meet-container {
   display: flex;
   flex-direction: column;
   height: 100vh;
   background-color: #202124;
   color: white;
+  max-height: 100vh;
+  overflow-y: hidden !important;
+}
+
+.overlay {
+  width: 100%;
+  height: 100%;
+  position: absolute !important;
+  display: flex;
+  gap: 5px;
+  background: none !important;
+  z-index: 1000 !important;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
+  height: -webkit-fill-available;
+
 }
 
 .main-content {
@@ -11,23 +40,26 @@
   flex: 1;
   overflow-y: auto;
   position: relative;
+  flex-direction: column;
 }
-.video-main-view-p{
-  min-height: 70%;
-  max-height: 70% !important;
+
+.video-main-view-p {
+  flex: 1;
+  min-height: 50vh;
+  display: flex;
+  flex-direction: column;
 }
+
 .video-main-view {
-  max-width: 100%;
-  min-width: 80%;
-  max-height: 100%;
-  flex: 3;
+  flex: 1;
   background-color: #3c4043;
   position: relative;
-  margin: 10px;
+  margin: 0;
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 0;
+  max-height: 100%;
 }
 
 .video-main-view video {
@@ -50,20 +82,21 @@
 }
 
 .side-panel {
-  flex: 1;
-  max-width: 350px;
+  width: 100%;
+  max-width: 100%;
   background-color: #3c4043;
-  margin: 10px;
   border-radius: 8px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  margin: 10px 0;
 }
 
 .participants-list {
   flex: 1;
   overflow-y: auto;
+  max-height: 40vh;
 }
 
 .participant-item {
@@ -117,6 +150,7 @@
   flex: 1;
   overflow-y: auto;
   padding: 10px;
+  max-height: 40vh;
 }
 
 .message {
@@ -172,6 +206,7 @@
   background-color: #3c4043;
   min-height: 120px;
   gap: 10px;
+  scrollbar-width: thin;
 }
 
 .video-tile {
@@ -210,9 +245,6 @@
 }
 
 .pin-overlay {
-  position: absolute;
-  top: 5px;
-  right: 5px;
   color: #4285f4;
   background-color: rgba(0, 0, 0, 0.5);
   border-radius: 50%;
@@ -222,10 +254,12 @@
   justify-content: center;
   align-items: center;
   font-size: 12px;
+  position: absolute;
+  top: 5px;
+  right: 5px;
 }
 
 .camera-off-overlay, .mic-off-overlay {
-  position: absolute;
   background-color: rgba(0, 0, 0, 0.5);
   border-radius: 50%;
   display: flex;
@@ -233,6 +267,7 @@
   align-items: center;
   width: 20px;
   height: 20px;
+  position: absolute;
 }
 
 .camera-off-overlay {
@@ -246,9 +281,6 @@
 }
 
 .hand-overlay {
-  position: absolute;
-  top: 5px;
-  right: 30px;
   font-size: 16px;
   background-color: rgba(0, 0, 0, 0.5);
   border-radius: 50%;
@@ -257,6 +289,9 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  position: absolute;
+  top: 5px;
+  right: 5px;
 }
 
 .initials-circle {
@@ -275,77 +310,30 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 20px;
+  padding: 10px;
   z-index: 10;
   background-color: #202124;
   border-top: 1px solid #5f6368;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .control-buttons {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px;
 }
 
 .meeting-info {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
 }
 
 .meeting-code {
-  display: flex;
-  align-items: center;
-  background-color: #5f6368;
-  padding: 5px 10px;
-  border-radius: 20px;
-  font-size: 14px;
-}
-.audio-wave {
-  width: 100%;
-  height: 30px;
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
-  margin-top: 5px;
-}
-
-.audio-wave-container {
-  position: absolute;
-  bottom: 40px;
-  left: 0;
-  right: 0;
-  padding: 0 10px;
-}
-
-.video-container {
-  position: relative;
-  width: 100%;
-  height: 100%;
-}
-
-.audio-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: #2c3e50;
-}
-
-.audio-placeholder.local {
-  background: #3498db;
-}
-
-.initials-circle {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  color: white;
-}
-.timer {
   display: flex;
   align-items: center;
   background-color: #5f6368;
@@ -366,6 +354,8 @@
 
 .btn {
   transition: all 0.2s;
+  padding: 8px;
+  min-width: 40px;
 }
 
 .btn:hover {
@@ -393,4 +383,133 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: #80868b;
+}
+
+
+/* Mobile specific styles */
+@media (max-width: 768px) {
+  .main-content{
+    display: flex !important;
+    min-width: 90vw !important;
+    max-width: 100% !important;
+    flex-direction: row !important;
+  }
+ .video-thumbnails{
+  display: flex;
+  flex-direction: column !important;
+  flex-wrap: wrap;
+ }
+  .video-main-view-p {
+    min-height: 40vh;
+  }
+  
+  .video-tile {
+    width: 120px;
+    height: 70px;
+    min-width: 120px;
+  }
+  
+  .control-bar {
+    padding: 8px;
+  }
+  
+  .btn {
+    padding: 6px;
+    min-width: 36px;
+  }
+  
+  .meeting-code {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+  
+  .video-label {
+    font-size: 12px;
+    padding: 3px 8px;
+  }
+  
+  .participant-item {
+    padding: 8px;
+  }
+  
+  .participant-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+}
+
+@media (min-width: 992px) {
+  .video-main-view-p {
+    flex-direction: row;
+    min-height: 70vh;
+  }
+  
+  .video-main-view {
+    margin: 10px;
+  }
+  
+  .side-panel {
+    max-width: 350px;
+    margin: 10px;
+  }
+  
+  .participants-list,
+  .chat-messages {
+    max-height: none;
+  }
+}
+
+/* Landscape orientation for mobile */
+@media (max-width: 768px) and (orientation: landscape) {
+  .video-main-view-p {
+    min-height: 60vh;
+  }
+  
+  .video-thumbnails {
+    min-height: 80px;
+  }
+  
+  .video-tile {
+    width: 100px;
+    height: 60px;
+    min-width: 100px;
+  }
+  
+  .control-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+}
+
+/* Very small screens */
+@media (max-width: 480px) {
+  .video-tile {
+    width: 100px;
+    height: 60px;
+    min-width: 100px;
+  }
+  
+  .control-buttons .btn span {
+    display: none;
+  }
+  
+  .meeting-code span:not(.bi) {
+    display: none;
+  }
+  
+  .initials-circle {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+}
+
+/* Tall screens (like some tablets in portrait) */
+@media (min-height: 1000px) {
+  .video-main-view-p {
+    min-height: 60vh;
+  }
 }

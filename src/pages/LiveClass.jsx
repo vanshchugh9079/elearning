@@ -60,7 +60,18 @@ const GoogleMeetUI = () => {
       return false;
     }
   };
+  // Add to your component
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768) {
+        // Reset mobile-specific states when switching to desktop
+        setShowChat(false);
+      }
+    };
 
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const startStream = async () => {
     try {
       const hasCamera = await checkCameraAvailability();
@@ -269,18 +280,18 @@ const GoogleMeetUI = () => {
         }
         return prev;
       });
-    
+
       // If we have any stream (camera or screen share), send it to the new user
       if (peerRef.current && (localStreamRef.current || screenStreamRef.current)) {
         const streamToSend = screenStreamRef.current || localStreamRef.current;
-        
+
         const call = peerRef.current.call(newUser.peerId, streamToSend);
         call.on('stream', remoteStream => {
-          setParticipants(prev => prev.map(p => 
+          setParticipants(prev => prev.map(p =>
             p.peerId === call.peer ? { ...p, stream: remoteStream } : p
           ));
         });
-        
+
         call.on('error', err => {
           console.error('Call error:', err);
         });
@@ -363,11 +374,11 @@ const GoogleMeetUI = () => {
           video: getMobileConstraints().video, // Video constraints only
           audio: false // Explicitly disable audio
         };
-        
+
         console.log("vansh")
         console.log(navigator)
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        
+
         // Handle iOS specific quirks
         if (isMobile) {
           const videoTracks = stream.getVideoTracks();
@@ -378,16 +389,16 @@ const GoogleMeetUI = () => {
             };
           });
         }
-  
+
         localStreamRef.current = stream;
         setCamera(true);
         setCameraError(null);
-  
+
         // Connect to all existing participants with video only
         participants.forEach(({ peerId }) => {
           const call = peerRef.current.call(peerId, stream);
           call.on('stream', remoteStream => {
-            setParticipants(prev => prev.map(p => 
+            setParticipants(prev => prev.map(p =>
               p.peerId === call.peer ? { ...p, stream: remoteStream } : p
             ));
           });
@@ -397,7 +408,7 @@ const GoogleMeetUI = () => {
       console.error("Error accessing camera:", err);
       setCamera(false);
       setCameraError(err.message);
-      
+
       if (err.name === 'NotAllowedError') {
         alert('Please enable camera permissions in your browser settings');
       } else if (err.name === 'NotFoundError') {
@@ -424,7 +435,7 @@ const GoogleMeetUI = () => {
           const newAudioTrack = audioStream.getAudioTracks()[0];
           localStreamRef.current.addTrack(newAudioTrack);
           setMic(true);
-          
+
           // Update all existing calls with the new stream
           participants.forEach(({ peerId }) => {
             if (peerId !== peerRef.current?.id) {
@@ -442,7 +453,7 @@ const GoogleMeetUI = () => {
         const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         localStreamRef.current = audioStream;
         setMic(true);
-        
+
         // Connect to all existing participants with audio only
         participants.forEach(({ peerId }) => {
           const call = peerRef.current.call(peerId, audioStream);
@@ -501,17 +512,6 @@ const GoogleMeetUI = () => {
 
   return (
     <div className="google-meet-container ">
-      {isMobile && (
-        <div className="mobile-warning alert alert-info">
-          <p>For best experience:</p>
-          <ul>
-            <li>Use Chrome or Firefox browser</li>
-            <li>Keep device in portrait mode</li>
-            <li>Allow camera permissions</li>
-          </ul>
-        </div>
-      )}
-
       {cameraError && (
         <div className="error-alert alert alert-danger">
           <p>Camera Error: {cameraError}</p>
@@ -520,7 +520,6 @@ const GoogleMeetUI = () => {
           </button>
         </div>
       )}
-
       <div className="main-content d-flex flex-column">
         <div className='m-0 p-0 d-flex video-main-view-p  w-100'>
           <div className="video-main-view rounded shadow d-flex ">
@@ -632,7 +631,6 @@ const GoogleMeetUI = () => {
           )
           }
         </div>
-
         <div className="video-thumbnails">
           <div
             className={`video-tile position-relative ${pinned === 'local' ? 'pinned' : ''}`}
@@ -656,104 +654,107 @@ const GoogleMeetUI = () => {
               role="button"
               aria-label={`Pin ${p.name}'s video`}
             >
+              <div className='overlay '>
+                {pinned === p.peerId && <span className="pin-overlay"><i className="bi bi-pin-fill" /></span>}
+                <span className="video-tile-label">{p.name}</span>
+                <div className='d-flex justify-content-end w-100 gap-1 '>
+                  {raisedHands.includes(p.userId) && (
+                    <div className="hand-overlay ">✋</div>
+                  )}
+                  {!p.stream && <div className="camera-off-overlay"><i className="bi bi-camera-video-off" /></div>}
+                </div>
+              </div>
               {p.stream ? renderVideo(p.stream) : renderPlaceholder(p.name)}
-              <span className="video-tile-label">{p.name}</span>
-              {pinned === p.peerId && <span className="pin-overlay"><i className="bi bi-pin-fill" /></span>}
-              {raisedHands.includes(p.userId) && (
-                <div className="hand-overlay">✋</div>
-              )}
-              {!p.stream && <div className="camera-off-overlay"><i className="bi bi-camera-video-off" /></div>}
             </div>
           ))}
         </div>
+      </div>
+      <div className="control-bar bg-dark text-light d-flex justify-content-between align-items-center py-2 px-3">
+        <div className="meeting-info d-flex align-items-center">
+          <span className="meeting-code">
+            <i className="bi bi-shield-lock me-2"></i>
+            <strong>{courseId}</strong>
+          </span>
+          {isHost && <span className="badge bg-primary ms-2">Host</span>}
+          {isMobile && (
+            <button
+              className="btn btn-sm btn-outline-light ms-2"
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.href);
+                alert('Meeting link copied!');
+              }}
+            >
+              <i className="bi bi-link-45deg"></i> Copy Link
+            </button>
+          )}
+        </div>
 
-        <div className="control-bar bg-dark text-light d-flex justify-content-between align-items-center py-2 px-3">
-          <div className="meeting-info d-flex align-items-center">
-            <span className="meeting-code">
-              <i className="bi bi-shield-lock me-2"></i>
-              <strong>{courseId}</strong>
-            </span>
-            {isHost && <span className="badge bg-primary ms-2">Host</span>}
-            {isMobile && (
-              <button
-                className="btn btn-sm btn-outline-light ms-2"
-                onClick={() => {
-                  navigator.clipboard.writeText(window.location.href);
-                  alert('Meeting link copied!');
-                }}
-              >
-                <i className="bi bi-link-45deg"></i> Copy Link
-              </button>
+        <div className="control-buttons d-flex gap-2">
+          <button
+            onClick={toggleMic}
+            className={`btn mx-1 ${mic ? 'btn-light' : 'btn-danger'}`}
+            title={mic ? 'Mute' : 'Unmute'}
+            aria-label={mic ? 'Mute microphone' : 'Unmute microphone'}
+          >
+            <i className={`bi ${mic ? 'bi-mic-fill' : 'bi-mic-mute-fill'}`} />
+          </button>
+
+          <button
+            onClick={toggleCamera}
+            className={`btn mx-1 ${camera ? 'btn-light' : 'btn-danger'}`}
+            title={camera ? 'Turn off camera' : 'Turn on camera'}
+            aria-label={camera ? 'Turn off camera' : 'Turn on camera'}
+          >
+            <i className={`bi ${camera ? 'bi-camera-video-fill' : 'bi-camera-video-off-fill'}`} />
+          </button>
+
+          <button
+            onClick={toggleScreenShare}
+            className={`btn m-0  ${screenShare ? 'btn-success' : 'btn-light'}`}
+            title={screenShare ? 'Stop sharing' : 'Share screen'}
+            aria-label={screenShare ? 'Stop sharing screen' : 'Share screen'}
+          >
+            <i className={`bi ${screenShare ? 'bi-stop-fill' : 'bi-laptop'}`} />
+          </button>
+
+          <button
+            onClick={raisedHands.includes(user._id) ? lowerHand : raiseHand}
+            className={`btn mx-1 ${raisedHands.includes(user._id) ? 'btn-warning' : 'btn-light'}`}
+            title={raisedHands.includes(user._id) ? 'Lower hand' : 'Raise hand'}
+            aria-label={raisedHands.includes(user._id) ? 'Lower hand' : 'Raise hand'}
+          >
+            <i className="bi bi-hand-index" />
+          </button>
+          <button
+            onClick={() => setShowParticipants(!showParticipants)}
+            className={`btn mx-1 ${showParticipants ? 'btn-primary' : 'btn-light'}`}
+            title="Participants"
+            aria-label="Show participants"
+          >
+            <i className="bi bi-people-fill" />
+            <span className="badge bg-secondary ms-1">{participants.length + 1}</span>
+          </button>
+
+          <button
+            onClick={() => setShowChat(!showChat)}
+            className={`btn mx-1 ${showChat ? 'btn-primary' : 'btn-light'}`}
+            title="Chat"
+            aria-label="Show chat"
+          >
+            <i className="bi bi-chat-left-text-fill" />
+            {chatMessages.length > 0 && (
+              <span className="badge bg-secondary ms-1">{chatMessages.length}</span>
             )}
-          </div>
-
-          <div className="control-buttons d-flex gap-2">
-            <button
-              onClick={toggleMic}
-              className={`btn mx-1 ${mic ? 'btn-light' : 'btn-danger'}`}
-              title={mic ? 'Mute' : 'Unmute'}
-              aria-label={mic ? 'Mute microphone' : 'Unmute microphone'}
-            >
-              <i className={`bi ${mic ? 'bi-mic-fill' : 'bi-mic-mute-fill'}`} />
-            </button>
-
-            <button
-              onClick={toggleCamera}
-              className={`btn mx-1 ${camera ? 'btn-light' : 'btn-danger'}`}
-              title={camera ? 'Turn off camera' : 'Turn on camera'}
-              aria-label={camera ? 'Turn off camera' : 'Turn on camera'}
-            >
-              <i className={`bi ${camera ? 'bi-camera-video-fill' : 'bi-camera-video-off-fill'}`} />
-            </button>
-
-            <button
-              onClick={toggleScreenShare}
-              className={`btn m-0  ${screenShare ? 'btn-success' : 'btn-light'}`}
-              title={screenShare ? 'Stop sharing' : 'Share screen'}
-              aria-label={screenShare ? 'Stop sharing screen' : 'Share screen'}
-            >
-              <i className={`bi ${screenShare ? 'bi-stop-fill' : 'bi-laptop'}`} />
-            </button>
-
-            <button
-              onClick={raisedHands.includes(user._id) ? lowerHand : raiseHand}
-              className={`btn mx-1 ${raisedHands.includes(user._id) ? 'btn-warning' : 'btn-light'}`}
-              title={raisedHands.includes(user._id) ? 'Lower hand' : 'Raise hand'}
-              aria-label={raisedHands.includes(user._id) ? 'Lower hand' : 'Raise hand'}
-            >
-              <i className="bi bi-hand-index" />
-            </button>
-            <button
-              onClick={() => setShowParticipants(!showParticipants)}
-              className={`btn mx-1 ${showParticipants ? 'btn-primary' : 'btn-light'}`}
-              title="Participants"
-              aria-label="Show participants"
-            >
-              <i className="bi bi-people-fill" />
-              <span className="badge bg-secondary ms-1">{participants.length + 1}</span>
-            </button>
-
-            <button
-              onClick={() => setShowChat(!showChat)}
-              className={`btn mx-1 ${showChat ? 'btn-primary' : 'btn-light'}`}
-              title="Chat"
-              aria-label="Show chat"
-            >
-              <i className="bi bi-chat-left-text-fill" />
-              {chatMessages.length > 0 && (
-                <span className="badge bg-secondary ms-1">{chatMessages.length}</span>
-              )}
-            </button>
-            <button
-              onClick={handleEndCall}
-              className="btn btn-danger mx-1"
-              title={isHost ? 'End call for all' : 'Leave call'}
-              aria-label={isHost ? 'End call for all' : 'Leave call'}
-            >
-              <i className={`bi ${isHost ? 'bi-telephone-x-fill' : 'bi-telephone-outbound-fill'}`} />
-              <span className="ms-1 d-none d-sm-inline">{isHost ? 'End' : 'Leave'}</span>
-            </button>
-          </div>
+          </button>
+          <button
+            onClick={handleEndCall}
+            className="btn btn-danger mx-1"
+            title={isHost ? 'End call for all' : 'Leave call'}
+            aria-label={isHost ? 'End call for all' : 'Leave call'}
+          >
+            <i className={`bi ${isHost ? 'bi-telephone-x-fill' : 'bi-telephone-outbound-fill'}`} />
+            <span className="ms-1 d-none d-sm-inline">{isHost ? 'End' : 'Leave'}</span>
+          </button>
         </div>
       </div>
     </div>
