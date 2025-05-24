@@ -68,7 +68,10 @@ const getYourPurchasedCourse = async (req, res) => {
     try {
         const user = req.user;
         const getUser = await User.findById(user.id)
-            .populate("subscription watchedLecture");
+            .populate("watchedLecture").populate({
+                path:"subscription",
+                populate:"createdBy"
+            });
 
         // Transform each course into a plain JS object and calculate watched percentage
         const updatedSubscriptions = getUser.subscription.map((courseDoc) => {
