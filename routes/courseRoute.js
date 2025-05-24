@@ -111,7 +111,7 @@ const getYourPurchasedCourse = async (req, res) => {
 // Purchase a course
 let getYourCourse = async (req, res) => {
     const user = req.user;
-    let course = await Course.find({ createdBy: user.id })
+    let course = await Course.find({ createdBy: user.id }).populate("createdBy","name")
     res.status(200).json({
         data: course,
         message: "Your courses fetched successfully"
