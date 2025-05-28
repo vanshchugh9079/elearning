@@ -13,14 +13,13 @@ const NavigationBar = () => {
     const dispatch = useDispatch();
     const location = useLocation();
     const socket = useSocket();
-
     const isActive = (path) => location.pathname === path ? 'active' : '';
 
     useEffect(() => {
         if (!socket) return;
 
         const onLiveClass = (obj) => {
-            console.log(obj)
+            console.log(obj);
             toast.info(
                 <div>
                     <strong>📢 {obj.name}</strong>
@@ -61,39 +60,73 @@ const NavigationBar = () => {
     }, [socket, navigate]);
 
     return (
-        <>
-            <div className="v-navbar fixed-top position-sticky">
-                <div className="navbar-logo">
-                    <span className="logo-text">E-Learning</span>
+        <nav
+            className="navbar navbar-expand-lg bg-white navbar-light shadow p-0 w-100 position-sticky top-0 z-3"
+            style={{ zIndex: 1000000000000000000000000 }}
+        >
+            <a className="navbar-brand d-flex align-items-center px-4 px-lg-5" onClick={() => {
+                navigate("/")
+            }}>
+                <h2 className="m-0 text-primary"><i className="fa fa-book me-3" />eLEARNING</h2>
+            </a>
+            <button
+                type="button"
+                className="navbar-toggler me-4 ms-auto"
+                data-bs-toggle="collapse"
+                data-bs-target="#navbarCollapse"
+            >
+                <span className="navbar-toggler-icon" />
+            </button>
+
+            <div className="collapse navbar-collapse" id="navbarCollapse">
+                <div className="navbar-nav ms-auto p-4 p-lg-0">
+                    <a className={`nav-item nav-link ${isActive('/')}`} onClick={() => {
+                        navigate("/")
+                    }}>Home</a>
+                    <a className={`nav-item nav-link ${isActive('/about')}`} onClick={() => {
+                        navigate("/about")
+                    }}>About</a>
+                    <span
+                        className={`nav-item nav-link ${isActive('/course')}`}
+                        role="button"
+                        onClick={() => navigate("/course")}
+                    >
+                        Courses
+                    </span>
+                    {
+                        loggedIn &&
+                        <a className={`nav-item nav-link ${isActive('/create')}`} onClick={() => {
+                            navigate("/create")
+                        }}>Create Course</a>
+                    }
+                    <a href="/contact" className={`nav-item nav-link ${isActive('/contact')}`}>Contact</a>
                 </div>
-                <div className="navbar-links">
-                    <Link to={"/"} className={`fs-6 fw-bolder ${isActive('/')}`}>Home</Link>
-                    <Link className={`fs-6 fw-bolder p-0`} onClick={() => dispatch(setShowAddModel(true))}>Add Course</Link>
-                    <Link to={"/course"} className={`${isActive('/course')} fw-bolder fs-6`}>Courses</Link>
-                    <a href="#about" className={`${isActive('#about')} fw-bolder fs-6`}>About</a>
-                    {loggedIn && user.avatar?.url && (
+
+                {/* Conditional Profile or Join Now */}
+                <div className="d-flex align-items-center pe-4">
+                    {loggedIn ? (
                         <img
-                            src={user.avatar.url}
-                            alt="profile"
-                            style={navStyle.imgStyle}
-                            onClick={() => navigate("/profile")}
+                            src={user?.avatar?.url || '/default-profile.png'}
+                            alt="Profile"
                             className="rounded-circle"
+                            style={{
+                                width: '40px',
+                                height: '40px',
+                                objectFit: 'cover',
+                                cursor: 'pointer'
+                            }}
+                            onClick={() => navigate('/profile')}
                         />
+                    ) : (
+                        <a href="/signup" className="btn btn-primary py-4 px-lg-5 d-none d-lg-block">
+                            Join Now<i className="fa fa-arrow-right ms-3" />
+                        </a>
                     )}
                 </div>
             </div>
             <ToastContainer />
-        </>
+        </nav>
     );
-};
-
-const navStyle = {
-    imgStyle: {
-        height: 40,
-        width: 40,
-        objectFit: "cover",
-        cursor: 'pointer'
-    }
 };
 
 export default NavigationBar;

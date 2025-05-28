@@ -1,8 +1,178 @@
-.myBtn{
-    cursor: pointer !important;
-    z-index: 10000000 !important;
-    transition: all ease-in-out 0.2s !important;
+.create-course-container {
+  background-image: url("https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1470&q=80");
+  background-size: cover;
+  background-position: center;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+  position: fixed;
+  width: 100%;
 }
-.myBtn:hover{
-    transform: scale(1.1) !important;
+
+/* Flip effect */
+.flip-container {
+  perspective: 1200px;
+  transition: transform 0.3s ease;
+}
+
+.flip-container.flipped {
+  transform: rotateY(180deg)
+}
+
+/* Form Card */
+.course-form-card {
+  position: relative;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 16px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  color: white;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  animation: fadeInSlideUp 0.5s ease-out;
+  backdrop-filter: blur(8px);
+  transition: transform 0.8s;
+}
+
+/* Close buttons */
+.close-btn,
+.global-close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 2rem;
+  z-index: 10;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.close-btn:hover,
+.global-close-btn:hover {
+  transform: rotate(90deg) scale(1.1);
+}
+
+/* Category buttons */
+.category-button {
+  border: 1px solid #6ee7b7;
+  border-radius: 50px;
+  padding: 0.4rem 1rem;
+  background: transparent;
+  color: #d1fae5;
+  transition: all 0.2s ease-in-out;
+}
+
+.category-button.active {
+  background-color: #10b981;
+  border-color: #10b981;
+  color: white;
+}
+
+.category-button:hover {
+  background-color: #059669;
+  color: white;
+}
+
+/* Inputs and selects */
+.form-control,
+.form-select {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #f0fdfa;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.form-control:focus,
+.form-select:focus {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: #34d399;
+  box-shadow: 0 0 0 0.2rem rgba(52, 211, 153, 0.3);
+}
+
+.form-control::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Submit button */
+.btn-emerald {
+  background-color: #10b981;
+  color: white;
+  font-weight: bold;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  border: none;
+}
+
+.btn-emerald:hover {
+  background-color: #059669;
+  transform: translateY(-1px);
+}
+
+/* Animation */
+@keyframes fadeInSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Falling Stars */
+.falling-star {
+  position: absolute;
+  top: -20px;
+  width: 8px;
+  height: 8px;
+  background: #facc15;
+  border-radius: 50%;
+  animation: drop-star 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes drop-star {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.5) rotate(0deg);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(150vh) scale(1.2) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* Responsive styles */
+@media (max-width: 992px) {
+  .course-form-card {
+    max-width: 480px;
+  }
+}
+.form-control:focus,
+.form-select:focus {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: #34d399 !important;
+  box-shadow: 0 0 0 0.2rem rgba(52, 211, 153, 0.3) !important;
+  color: white !important; /* Add this line */
+}
+
+@media (max-width: 576px) {
+  .course-form-card {
+    max-width: 320px;
+    padding: 1.5rem;
+  }
+
+  .category-button {
+    font-size: 0.85rem;
+    padding: 0.3rem 0.8rem;
+  }
 }

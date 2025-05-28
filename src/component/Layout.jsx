@@ -16,15 +16,14 @@ export default function Layout() {
         <div className=' full-height'>
 
             {
-                !path.includes("live") &&
+                !path.includes("live")&& !path.includes("create") &&
                 <NavigationBar />
             }
             <Outlet />
             {
-                !path .includes("profile")  || !path.includes("live")   &&
+                !path .includes("profile")  && !path.includes("live") && !path.includes("create")  &&
                 <Footer />
             }
-            <AddCourse show={showAddModel} />
         </div>
     )
 }

@@ -65,7 +65,7 @@ const ProfilePage = () => {
 
   return (
     <div className="container-fluid">
-      <div className="row" style={{ height: '89.8vh' }}>
+      <div className="row" style={{ height: '89.8vh' } }>
         {/* Sidebar */}
         <div className="col-md-4 bg-white d-flex flex-column justify-content-between p-3 shadow">
           <div>

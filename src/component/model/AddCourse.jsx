@@ -1,203 +1,246 @@
-import React, { useState } from 'react';
-import { Modal, Button, Form, Image } from 'react-bootstrap';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import { useDispatch, useSelector } from 'react-redux';
-import { setShowAddModel } from '../../redux/slice/showAddModel';
-import axios from 'axios';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { api } from "../../utils/constant";
+import "bootstrap/dist/css/bootstrap.min.css";
 import "../../css/layoutComponet/addModel.css";
-import { api } from '../../utils/constant';
-import AlertModal from '../../utils/alertModel';
-import { useNavigate } from 'react-router-dom';
 
-const AddCourse = ({ show }) => {
-    const dispatch = useDispatch();
-    const {token} = useSelector(state=>state.user.user);
-    const [courseName, setCourseName] = useState('');
-    const [thumbnailFile, setThumbnailFile] = useState(null);
-    const [thumbnailPreview, setThumbnailPreview] = useState(null);
-    const [price, setPrice] = useState('');
-    const [duration, setDuration] = useState('');
-    const [description, setDescription] = useState('');
-    const [errors, setErrors] = useState({});
-    let navigate=useNavigate()
-    const handleReset = () => {
-        setCourseName('');
-        setThumbnailFile(null);
-        setThumbnailPreview(null);
-        setPrice('');
-        setDuration('');
-        setDescription('');
-        setErrors({});
-    };
+const categoriesOptions = [
+  "Web Development", "Data Science", "Mobile Development",
+  "Design", "Marketing", "Other",
+];
 
-    const handleFileChange = (e) => {
-        const file = e.target.files[0];
-        setThumbnailFile(file);
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setThumbnailPreview(reader.result);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
+const BootstrapCourseForm = () => {
+  const [form, setForm] = useState({
+    name: '', description: '', price: '',
+    level: 'Beginner', categories: [], thumbnail: null,
+  });
+  const [errors, setErrors] = useState({});
+  const [preview, setPreview] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
+  const [flipped, setFlipped] = useState(false);
+  const navigate = useNavigate();
+  const token = useSelector((state) => state.user.user?.token);
 
-    const validateFields = () => {
-        const newErrors = {};
-        if (!courseName.trim()) newErrors.courseName = 'Course name is required';
-        if (!thumbnailFile) newErrors.thumbnail = 'Thumbnail is required';
-        if (!price.trim()) newErrors.price = 'Price is required';
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
+  const toggleCategory = (cat) => {
+    setForm((prevForm) => ({
+      ...prevForm,
+      categories: prevForm.categories.includes(cat)
+        ? prevForm.categories.filter((c) => c !== cat)
+        : [...prevForm.categories, cat],
+    }));
+  };
 
-    const handleConfirm = async () => {
-        if (!validateFields()) return;
-        const formData = new FormData();
-        formData.append('name', courseName);
-        formData.append('file', thumbnailFile);
-        formData.append('price', price);
-        formData.append('duration', duration);
-        formData.append('description', description);
+  const handleChange = (e) => {
+    const { name, value, files } = e.target;
+    if (name === "thumbnail") {
+      const file = files[0];
+      setForm((prev) => ({ ...prev, thumbnail: file }));
+      setPreview(file ? URL.createObjectURL(file) : null);
+    } else {
+      setForm((prev) => ({ ...prev, [name]: value }));
+    }
+    setErrors((prev) => ({ ...prev, [name]: null }));
+  };
 
-        try {
-            const res = await api.post('course/create', formData, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'multipart/form-data'
-                }
-            });
-            console.log("Course created:", res.data);
-            AlertModal({
-                title: "Course created successfully",
-                text: "Press OK to go to Course page",
-                icon: "success",
-                timer: 2000,
-                showCancelButton: false,
-                showConfirmButton: true
-            }).then(() => {
-                navigate("/course")
-            })
-            handleReset();
-            dispatch(setShowAddModel(false));
-        } catch (error) {
-            AlertModal({
-                title: error.response.data.message || "Something went wrong",
-                icon: "error",
-                timer: 2000,
-                showCancelButton: false,
-                showConfirmButton: false
-            })
-        }
-    };
+  const validate = () => {
+    const newErrors = {};
+    if (!form.name) newErrors.name = "Name is required";
+    if (!form.description) newErrors.description = "Description is required";
+    if (form.price === '' || isNaN(form.price) || Number(form.price) < 0)
+      newErrors.price = "Price must be a non-negative number";
+    if (form.categories.length === 0)
+      newErrors.categories = "Select at least one category";
+    if (!form.thumbnail)
+      newErrors.thumbnail = "Thumbnail is required";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
-    return (
-        <div>
-            <Modal show={show} centered size="md">
-                <h5
-                    className='position-absolute top-0 end-0 m-3 fw-bold myBtn'
-                    onClick={() => dispatch(setShowAddModel(false))}
-                >
-                    ❌
-                </h5>
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validate()) return;
 
-                <Modal.Body className="p-4">
-                    <h5 className="mb-3">Add New Course</h5>
-                    <Form>
-                        <Form.Group className="mb-3">
-                            <Form.Label>Course Name <span className="text-danger">*</span></Form.Label>
-                            <Form.Control
-                                type="text"
-                                placeholder="Enter course name"
-                                value={courseName}
-                                isInvalid={!!errors.courseName}
-                                onChange={(e) => setCourseName(e.target.value)}
-                            />
-                            <Form.Control.Feedback type="invalid">
-                                {errors.courseName}
-                            </Form.Control.Feedback>
-                        </Form.Group>
+    setSubmitting(true);
+    setSuccessMsg("");
+    setErrors({});
 
-                        <Form.Group className="mb-3">
-                            <Form.Label>Thumbnail <span className="text-danger">*</span></Form.Label>
-                            <Form.Control
-                                type="file"
-                                accept="image/*"
-                                isInvalid={!!errors.thumbnail}
-                                onChange={handleFileChange}
-                            />
-                            <Form.Control.Feedback type="invalid">
-                                {errors.thumbnail}
-                            </Form.Control.Feedback>
-                            {thumbnailPreview && (
-                                <div className="d-flex align-items-start mt-2 position-relative" style={{ width: '110px' }}>
-                                    <Image
-                                        src={thumbnailPreview}
-                                        thumbnail
-                                        style={{ width: '100px' }}
-                                    />
-                                    <button
-                                        type="button"
-                                        className="btn btn-sm position-absolute top-0 end-0"
-                                        style={{ transform: 'translate(40%, -40%)', padding: '0px 5px' }}
-                                        onClick={() => {
-                                            setThumbnailPreview(null);
-                                            setThumbnailFile(null);
-                                        }}
-                                    >
-                                        ❌
-                                    </button>
-                                </div>
-                            )}
-                        </Form.Group>
+    try {
+      const formData = new FormData();
+      formData.append("name", form.name);
+      formData.append("description", form.description);
+      formData.append("price", form.price);
+      formData.append("level", form.level);
+      form.categories.forEach((cat) => formData.append("categories[]", cat));
+      if (form.thumbnail) {
+        formData.append("file", form.thumbnail);
+      }
 
-                        <Form.Group className="mb-3">
-                            <Form.Label>Price (INR) <span className="text-danger">*</span></Form.Label>
-                            <Form.Control
-                                type="number"
-                                placeholder="Enter price"
-                                value={price}
-                                isInvalid={!!errors.price}
-                                onChange={(e) => setPrice(e.target.value)}
-                            />
-                            <Form.Control.Feedback type="invalid">
-                                {errors.price}
-                            </Form.Control.Feedback>
-                        </Form.Group>
+      const res = await api.post("course/create", formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
-                        <Form.Group className="mb-3">
-                            <Form.Label>Duration</Form.Label>
-                            <Form.Control
-                                type="text"
-                                placeholder="e.g., 6 weeks"
-                                value={duration}
-                                onChange={(e) => setDuration(e.target.value)}
-                            />
-                        </Form.Group>
+      if (res.data.success) {
+        setSuccessMsg(res.data.message || "Course created successfully!");
+        setForm({
+          name: "",
+          description: "",
+          price: "",
+          level: "Beginner",
+          categories: [],
+          thumbnail: null,
+        });
+        setPreview(null);
+        navigate("/course-success");
+      }
+    } catch (error) {
+      const message =
+        error.response?.data?.message ||
+        "Something went wrong. Please try again.";
+      setErrors({ apiError: message });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
-                        <Form.Group className="mb-4">
-                            <Form.Label>Description</Form.Label>
-                            <Form.Control
-                                as="textarea"
-                                rows={3}
-                                placeholder="Course description"
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                            />
-                        </Form.Group>
+  const handleClose = () => {
+    setFlipped(true);
+    setTimeout(() => navigate("/"), 300);
+  };
 
-                        <div className="d-flex justify-content-end">
-                            <Button variant="outline-info" className="me-2" onClick={handleReset}>
-                                Reset
-                            </Button>
-                            <Button variant="info" onClick={handleConfirm}>
-                                Confirm
-                            </Button>
-                        </div>
-                    </Form>
-                </Modal.Body>
-            </Modal>
+  return (
+    <div className={`create-course-container flip-container ${flipped ? "flipped" : ""} `}>
+      <button className="global-close-btn fs-1 fw-bold" onClick={handleClose}>×</button>
+
+      {[...Array(10)].map((_, i) => (
+        <div
+          className="falling-star"
+          key={i}
+          style={{
+            left: `${Math.random() * 100}%`,
+            top: `-${Math.random() * 20 + 10}px`,
+            animationDelay: `${i * 0.4}s`,
+          }}
+        />
+      ))}
+
+      <div className={``}>
+        <div className="course-form-card position-relative">
+          <form onSubmit={handleSubmit}>
+            <h2 className="text-white mb-4 text-center">Create a New Course</h2>
+
+            {errors.apiError && (
+              <div className="alert alert-danger">{errors.apiError}</div>
+            )}
+            {successMsg && (
+              <div className="alert alert-success">{successMsg}</div>
+            )}
+
+            <div className="mb-3">
+              <label className="form-label">Course Name</label>
+              <input
+                type="text"
+                className={`form-control ${errors.name ? 'is-invalid' : ''}`}
+                name="name"
+                value={form.name}
+                onChange={handleChange}
+              />
+              {errors.name && <div className="invalid-feedback">{errors.name}</div>}
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Description</label>
+              <textarea
+                className={`form-control ${errors.description ? 'is-invalid' : ''}`}
+                name="description"
+                rows="3"
+                value={form.description}
+                onChange={handleChange}
+              ></textarea>
+              {errors.description && <div className="invalid-feedback">{errors.description}</div>}
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Price (₹)</label>
+              <input
+                type="number"
+                className={`form-control ${errors.price ? 'is-invalid' : ''}`}
+                name="price"
+                value={form.price}
+                onChange={handleChange}
+              />
+              {errors.price && <div className="invalid-feedback">{errors.price}</div>}
+            </div>
+
+            <div className="mb-3 bg-transparent">
+              <label className="form-label">Level</label>
+              <select
+                className="form-select bg-transparent text-white"
+                name="level"
+                value={form.level}
+                onChange={handleChange}
+              >
+                <option value="Beginner" className="text-black">Beginner</option>
+                <option value="Intermediate" className="text-black">Intermediate</option>
+                <option value="Advanced" className="text-black">Advanced</option>
+              </select>
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Categories</label>
+              <div className="d-flex flex-wrap gap-2">
+                {categoriesOptions.map((cat) => (
+                  <button
+                    type="button"
+                    key={cat}
+                    className={`category-button ${form.categories.includes(cat) ? 'active' : ''}`}
+                    onClick={() => toggleCategory(cat)}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+              {errors.categories && <div className="text-danger mt-2">{errors.categories}</div>}
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label">Thumbnail</label>
+              <input
+                type="file"
+                name="thumbnail"
+                accept="image/*"
+                className={`form-control ${errors.thumbnail ? 'is-invalid' : ''}`}
+                onChange={handleChange}
+              />
+              {errors.thumbnail && <div className="invalid-feedback">{errors.thumbnail}</div>}
+              {preview && (
+                <div className="mt-3 text-center">
+                  <img
+                    src={preview}
+                    alt="Thumbnail Preview"
+                    className="img-thumbnail"
+                    style={{ maxHeight: "200px" }}
+                  />
+                </div>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="btn btn-emerald w-100"
+              disabled={submitting}
+            >
+              {submitting ? "Submitting..." : "Submit"}
+            </button>
+          </form>
         </div>
-    );
+      </div>
+    </div>
+  );
 };
-export default AddCourse;
+
+export default BootstrapCourseForm;

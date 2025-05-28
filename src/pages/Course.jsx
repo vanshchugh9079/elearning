@@ -1,190 +1,588 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Navigation, Autoplay } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/navigation";
+import ScrollToTop from "../utils/ScrollToTop.jsx";
+import { api } from "../utils/constant.js";
 import "../css/pages/course.css";
-import { api } from '../utils/constant';
-import { useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useInView } from "react-intersection-observer";
+import { motion, AnimatePresence } from "framer-motion";
+import Confetti from 'react-confetti';
+import { useWindowSize } from 'react-use';
+import { useNavigate } from "react-router-dom";
 
-// Course Card Component
-const CourseCard = ({ course, navigate, user, showEdit }) => {
-    const handlePrimaryClick = async () => {
-        if (!course.purchased) {
-            if (course.price > 0) {
-                navigate(`/course/buy/${course._id}`);
-            } else {
-                try {
-                    const response = await api.post(
-                        `course/${course._id}/purchase`,
-                        {},
-                        {
-                            headers: { Authorization: `Bearer ${user.token}` },
-                        }
-                    );
-                    console.log(response);
-                    navigate(`/course/${course._id}`);
-                } catch (err) {
-                    window.localStorage.clear()
-                    navigate("/")
-                    console.error("Error purchasing course:", err);
-                }
-            }
-        } else {
-            navigate(`/course/${course._id}`);
-        }
-    };
+const CourseCard = ({
+  title,
+  instructor,
+  duration,
+  students,
+  price,
+  image,
+  level,
+  tags,
+  buttons,
+  isCompleted,
+  watchedPercentage,
+  liveStatus,
+  courseId,
+  onPurchase,
+  isPurchasing
+}) => {
+  let navigate = useNavigate();
+  const [expanded, setExpanded] = useState(false);
+  const [ref, inView] = useInView({
+    triggerOnce: true,
+    threshold: 0.1,
+  });
 
-    return (
-        <div className="col-md-4 mb-4">
-            <div className="card h-100 shadow rounded-4">
-                <img
-                    src={course.thumbnail?.url}
-                    className="card-img-top p-3 mx-auto"
-                    alt={course.name}
-                    style={{ maxHeight: '200px', objectFit: 'contain' }}
-                />
-                <div className="card-body text-center">
-                    <h5 className="card-title">{course.name}</h5>
-                    <p className="text-muted">Instructor: {course.createdBy?.name}</p>
-                    <p className="fw-bold fs-5">₹ {course.price}</p>
+  const handleButtonClick = (label, courseId) => {
+    switch (label) {
+      case "Continue":
+        navigate("/course/"+courseId);
+        break;
+      case "Edit Course":
+        window.location.href = `/course/edit/${courseId}`;
+        break;
+      case "Start LiveClass":
+      case "Join LiveClass":
+        navigate("/course/live/" + courseId);
+        break;
+      case "Purchase":
+        onPurchase(courseId);
+        break;
+      default:
+        break;
+    }
+  };
 
-                    <button
-                        className="btn btn-purple text-white rounded-pill px-4 me-2"
-                        onClick={handlePrimaryClick}
-                    >
-                        {course.purchased ? 'Continue' : 'Get Started'}
-                    </button>
+  // Add Join LiveClass button if course is live and purchased
+  const enhancedButtons = [...buttons];
+  if (price === "Purchased" && liveStatus === "live" && !buttons.some(btn => btn.label === "Join LiveClass")) {
+    enhancedButtons.unshift({
+      label: "Join LiveClass",
+      variant: "btn-danger pulse-button"
+    });
+  }
 
-                    {showEdit && (
-                        <>
-                            <button
-                                className="btn btn-outline-primary rounded-pill px-4 mt-2"
-                                onClick={() => navigate(`/course/edit/${course._id}`)}
-                            >
-                                ✏️ Edit
-                            </button>
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 20 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.5 }}
+      className={`course-card card h-100 border-0 rounded-4 overflow-hidden ${isCompleted ? "completed-course" : ""
+        }`}
+      style={{
+        position: "relative",
+        boxShadow: "0 10px 20px rgba(0,0,0,0.08)",
+      }}
+      whileHover={{
+        y: -5,
+        boxShadow: "0 15px 30px rgba(0,0,0,0.12)"
+      }}
+    >
+      <div className="image-container" style={{ height: "180px", overflow: "hidden" }}>
+        <img
+          src={image}
+          className="card-img-top"
+          alt={title}
+          style={{
+            height: "100%",
+            width: "100%",
+            objectFit: "cover",
+            transition: "transform 0.5s ease",
+          }}
+        />
+      </div>
 
-                            <button
-                                className="btn btn-outline-success rounded-pill px-4 mt-2 ms-2"
-                                onClick={() => navigate(`/course/live/${course._id}`)}
-                            >
-                                🚀 Start Live Class
-                            </button>
-                        </>
-                    )}
-                </div>
-            </div>
+      {isCompleted && (
+        <div className="completion-badge position-absolute top-0 end-0 m-2">
+          <span className="badge bg-success rounded-pill px-2 py-1">
+            <i className="fas fa-check-circle me-1"></i> Completed
+          </span>
         </div>
-    );
+      )}
+      {liveStatus === "live" && (
+        <div className="position-absolute top-0 start-0 m-2">
+          <span className="badge bg-danger rounded-pill px-2 py-1 pulse-animation">
+            <i className="fas fa-broadcast-tower me-1"></i> LIVE
+          </span>
+        </div>
+      )}
+
+      <div className="card-body px-4 py-3">
+        <h5 className="fw-bold mb-2 text-truncate">{title}</h5>
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <span className="badge bg-primary bg-opacity-10 text-primary text-uppercase rounded-pill px-3 py-1">
+            {level}
+          </span>
+          <span className={`fw-bold ${price === "Purchased"
+              ? "text-success"
+              : price === "Free"
+                ? "text-info"
+                : "text-primary"
+            }`}>
+            {price}
+          </span>
+        </div>
+
+        <div className="d-flex flex-wrap gap-1 mb-3">
+          {tags.slice(0, 3).map((tag, i) => (
+            <span key={i} className="badge bg-light text-muted border rounded-pill px-2">
+              {tag.length > 12 ? `${tag.substring(0, 10)}...` : tag}
+            </span>
+          ))}
+          {tags.length > 3 && (
+            <span className="badge bg-light text-muted border rounded-pill px-2">
+              +{tags.length - 3}
+            </span>
+          )}
+        </div>
+
+        <div className="course-meta mb-3">
+          <div className="d-flex align-items-center text-muted small mb-1">
+            <i className="fas fa-user-tie me-2 text-primary"></i>
+            <span className="text-truncate">{instructor}</span>
+          </div>
+          <div className="d-flex align-items-center text-muted small mb-1">
+            <i className="fas fa-clock me-2 text-primary"></i>
+            <span>{duration}</span>
+          </div>
+          <div className="d-flex align-items-center text-muted small">
+            <i className="fas fa-users me-2 text-primary"></i>
+            <span>{students} Students</span>
+          </div>
+        </div>
+
+        <div className="row g-2">
+          {enhancedButtons.map((btn, idx) => (
+            <div className={enhancedButtons.length > 2 && idx === enhancedButtons.length - 1 ? "col-12" : "col-6"} key={idx}>
+              <button
+                className={`btn btn-sm w-100 rounded-pill ${btn.variant} ${btn.label === "Continue" && expanded ? "active" : ""
+                  }`}
+                onClick={() => handleButtonClick(btn.label, courseId)}
+                disabled={isPurchasing && btn.label === "Purchase"}
+                style={{
+                  height: '50px', // Fixed height
+                  minWidth: '100px', // Minimum width
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0.375rem 0.75rem',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}
+              >
+                {btn.label === "Continue" && (
+                  <i className={`fas fa-${expanded ? "compress" : "expand"} me-1`}></i>
+                )}
+                {btn.label === "Join LiveClass" && (
+                  <i className="fas fa-broadcast-tower me-1"></i>
+                )}
+                {btn.label === "Purchase" && isPurchasing ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    Processing...
+                  </>
+                ) : (
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {btn.label}
+                  </span>
+                )}
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {expanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+            className="mt-3 pt-3 border-top"
+          >
+            <div className="d-flex justify-content-between small mb-1">
+              <span className="text-muted">Progress</span>
+              <span className="fw-semibold">{watchedPercentage || 75}%</span>
+            </div>
+            <div className="progress mb-3" style={{ height: "6px" }}>
+              <div
+                className="progress-bar bg-success progress-bar-striped progress-bar-animated"
+                role="progressbar"
+                style={{ width: `${watchedPercentage || 75}%` }}
+                aria-valuenow={watchedPercentage || 75}
+                aria-valuemin="0"
+                aria-valuemax="100"
+              ></div>
+            </div>
+            {isCompleted ? (
+              <button className="btn btn-success btn-sm w-100 rounded-pill">
+                <i className="fas fa-certificate me-1"></i> Get Certificate
+              </button>
+            ) : (
+              <p className="small text-center text-muted mb-0">
+                Continue watching to complete
+              </p>
+            )}
+          </motion.div>
+        )}
+      </div>
+    </motion.div>
+  );
 };
 
-// Main Component
-const AvailableCourses = () => {
-    const [purchasedCourses, setPurchasedCourses] = useState([]);
-    const [otherCourses, setOtherCourses] = useState([]);
-    const [yourCourses, setYourCourses] = useState([]);
-    const { user } = useSelector((state) => state.user);
-    const navigate = useNavigate();
+const Section = ({ title, courses, highlight = false, gradient, onPurchase, purchasingCourseId }) => {
+  const [ref, inView] = useInView({
+    triggerOnce: true,
+    threshold: 0.1,
+  });
 
-    useEffect(() => {
-        const fetchCourses = async () => {
-            try {
-                const purchasedResponse = await api.get("course/purchased/get", {
-                    headers: { Authorization: `Bearer ${user.token}` },
-                });
+  if (!courses || courses.length === 0) return null;
 
-                const yourCourseResponse = await api.get("course/you", {
-                    headers: { Authorization: `Bearer ${user.token}` },
-                });
+  return (
+    <div
+      ref={ref}
+      className="section-wrapper py-5 position-relative"
+      style={{ background: gradient }}
+    >
+      <div className="container position-relative">
+        <div className="text-center mb-5">
+          <h2 className={`fw-bold position-relative d-inline-block ${highlight ? "text-white" : "text-dark"
+            }`}>
+            {title}
+            <span className="title-underline" />
+          </h2>
+        </div>
 
-                const purchasedList = purchasedResponse.data.data;
-                const createdList = yourCourseResponse.data.data;
+        {inView && (
+          <Swiper
+            modules={[Navigation, Autoplay]}
+            spaceBetween={20}
+            slidesPerView={1}
+            autoplay={{
+              delay: 5000,
+              disableOnInteraction: true,
+            }}
+            breakpoints={{
+              576: { slidesPerView: 1 },
+              768: { slidesPerView: 2.2 },
+              992: { slidesPerView: 3.2 },
+              1200: { slidesPerView: 4 },
+            }}
+            navigation={{
+              nextEl: '.swiper-button-next',
+              prevEl: '.swiper-button-prev',
+            }}
+            loop={courses.length > 3}
+          >
+            {courses.map((course, idx) => (
+              <SwiperSlide key={idx}>
+                <CourseCard
+                  {...course}
+                  onPurchase={onPurchase}
+                  isPurchasing={purchasingCourseId === course.courseId}
+                />
+              </SwiperSlide>
+            ))}
+            <div className="swiper-button-next"></div>
+            <div className="swiper-button-prev"></div>
+          </Swiper>
+        )}
+      </div>
+    </div>
+  );
+};
 
-                setPurchasedCourses(purchasedList.map(c => ({ ...c, purchased: true })));
-                setYourCourses(createdList.map(c => ({ ...c, purchased: true })));
+const PurchaseSuccessModal = ({ courseName, onClose }) => {
+  const { width, height } = useWindowSize();
 
-                const allCoursesResponse = await api.get("course/get/");
-                const allCourses = allCoursesResponse.data.data;
+  return (
+    <div className="modal-backdrop" style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.7)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 9999
+    }}>
+      <Confetti
+        width={width}
+        height={height}
+        recycle={false}
+        numberOfPieces={500}
+      />
+      <motion.div
+        className="modal-content bg-white rounded-4 p-5 text-center"
+        style={{ maxWidth: '500px', width: '90%' }}
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.8, opacity: 0 }}
+      >
+        <h3 className="fw-bold mb-3">Purchase Successful!</h3>
+        <p className="mb-4">
+          You've successfully enrolled in <strong>{courseName}</strong>. Start learning now!
+        </p>
+        <button
+          onClick={onClose}
+          className="btn btn-primary btn-lg px-4"
+        >
+          Start Learning
+        </button>
+      </motion.div>
+    </div>
+  );
+};
 
-                const excludedIds = new Set([
-                    ...purchasedList.map(c => c._id),
-                    ...createdList.map(c => c._id),
-                ]);
+const CoursePage = () => {
+  const { user } = useSelector((state) => state.user);
+  const [purchasedCourses, setPurchasedCourses] = useState([]);
+  const [createdCourses, setCreatedCourses] = useState([]);
+  const [otherCourses, setOtherCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [purchasingCourseId, setPurchasingCourseId] = useState(null);
+  const [purchaseSuccess, setPurchaseSuccess] = useState({
+    show: false,
+    courseName: ''
+  });
 
-                const others = allCourses
-                    .filter(course => !excludedIds.has(course._id))
-                    .map(course => ({ ...course, purchased: false }));
+  // Gradient definitions for each section
+  const gradients = {
+    purchased: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+    created: "linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%)",
+    others: "linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)"
+  };
 
-                setOtherCourses(others);
-            } catch (error) {
-                console.log(error);
-                
-                window.localStorage.clear()
-                navigate("/")
-                console.error("Error fetching courses:", error);
-            }
+  const mapCourseData = (course, isPurchased = false, isCreatedByYou = false) => {
+    let buttons = [];
+
+    if (isPurchased) {
+      buttons.push({
+        label: "Continue",
+        variant: "btn-success"
+      });
+    } else if (isCreatedByYou) {
+      buttons.push(
+        { label: "Continue", variant: "btn-success" },
+        { label: "Edit Course", variant: "btn-warning" },
+        { label: "Start LiveClass", variant: "btn-danger" }
+      );
+    } else {
+      buttons.push(
+        { label: "Read More", variant: "btn-outline-primary" },
+        { label: "Purchase", variant: "btn-primary" }
+      );
+    }
+
+    return {
+      title: course.name || "Untitled Course",
+      instructor: course.createdBy?.name || "Unknown Instructor",
+      duration: course.duration || "Not specified",
+      students: course.studentsCount || course.students || 0,
+      price: isPurchased
+        ? "Purchased"
+        : course.price === 0
+          ? "Free"
+          : `$${course.price || 0}`,
+      level: course.level || "Beginner",
+      tags: course.tags || ["New"],
+      image: course.thumbnail?.url || "https://source.unsplash.com/random/300x200/?education",
+      buttons,
+      isCompleted: isPurchased && course.watchedPercentage === 100,
+      watchedPercentage: course.watchedPercentage || 0,
+      liveStatus: course.liveStatus || "not-started",
+      courseId: course._id,
+    };
+  };
+
+  const handlePurchase = async (courseId) => {
+    try {
+      setPurchasingCourseId(courseId);
+
+      const config = {
+        headers: {
+          Authorization: `Bearer ${user?.token}`,
+        },
+      };
+
+      const response = await api.post(`course/${courseId}/purchase`, {}, config);
+
+      // Find the purchased course in otherCourses
+      const purchasedCourse = otherCourses.find(c => c.courseId === courseId);
+
+      // Show success modal
+      setPurchaseSuccess({
+        show: true,
+        courseName: purchasedCourse?.title || 'the course'
+      });
+
+      // Update the courses lists
+      const updatedOtherCourses = otherCourses.filter(c => c.courseId !== courseId);
+      setOtherCourses(updatedOtherCourses);
+
+      // Add to purchased courses with loading animation
+      if (purchasedCourse) {
+        const newPurchasedCourse = {
+          ...purchasedCourse,
+          price: "Purchased",
+          buttons: [{ label: "Continue", variant: "btn-success" }]
         };
 
-        fetchCourses();
-    }, [user.token]);
+        setPurchasedCourses(prev => [...prev, newPurchasedCourse]);
+      }
 
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || "Failed to purchase course");
+    } finally {
+      setPurchasingCourseId(null);
+    }
+  };
+
+  useEffect(() => {
+    async function fetchCourses() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const config = {
+          headers: {
+            Authorization: `Bearer ${user?.token}`,
+          },
+        };
+
+        const [purchasedRes, createdRes, othersRes] = await Promise.all([
+          api.get("course/purchased/get", config),
+          api.get("course/you", config),
+          api.get("course/get", config),
+        ]);
+
+        const purchased = purchasedRes.data.data.map((c) =>
+          mapCourseData(c, true, false)
+        );
+        const created = createdRes.data.data.map((c) =>
+          mapCourseData(c, false, true)
+        );
+
+        const purchasedIds = new Set(purchasedRes.data.data.map((c) => c._id));
+        const createdIds = new Set(createdRes.data.data.map((c) => c._id));
+        const filteredOthers = othersRes.data.data.filter(
+          (c) => !purchasedIds.has(c._id) && !createdIds.has(c._id)
+        );
+        const others = filteredOthers.map((c) => mapCourseData(c));
+
+        setPurchasedCourses(purchased);
+        setCreatedCourses(created);
+        setOtherCourses(others);
+      } catch (err) {
+        setError(err.response?.data?.message || err.message || "Failed to load courses");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (user?.token) {
+      fetchCourses();
+    }
+  }, [user]);
+
+  if (loading) {
     return (
-        <div className="container py-5">
-            <h2 className="text-center mb-5" style={{ color: '#9333ea' }}>Available Courses</h2>
-
-            {/* Purchased Courses Section */}
-            {purchasedCourses.length > 0 && (
-                <>
-                    <h4 className="mb-3 text-success">Your Purchased Courses</h4>
-                    <div className="row mb-5">
-                        {purchasedCourses.map((course, index) => (
-                            <CourseCard
-                                key={`p-${index}`}
-                                course={course}
-                                navigate={navigate}
-                                user={user}
-                                showEdit={false}
-                            />
-                        ))}
-                    </div>
-                </>
-            )}
-
-            {/* Your Created Courses Section */}
-            {yourCourses.length > 0 && (
-                <>
-                    <h4 className="mb-3 text-primary">Your Created Courses</h4>
-                    <div className="row mb-5">
-                        {yourCourses.map((course, index) => (
-                            <CourseCard
-                                key={`y-${index}`}
-                                course={course}
-                                navigate={navigate}
-                                user={user}
-                                showEdit={true}
-                            />
-                        ))}
-                    </div>
-                </>
-            )}
-
-            {/* Other Courses Section */}
-            <h4 className="mb-3">All Other Courses</h4>
-            <div className="row">
-                {otherCourses.length > 0 ? (
-                    otherCourses.map((course, index) => (
-                        <CourseCard
-                            key={`o-${index}`}
-                            course={course}
-                            navigate={navigate}
-                            user={user}
-                            showEdit={false}
-                        />
-                    ))
-                ) : (
-                    <div className="text-muted text-center">No new courses available.</div>
-                )}
-            </div>
+      <div className="d-flex justify-content-center align-items-center vh-100 bg-light">
+        <div className="text-center">
+          <div className="spinner-grow text-primary" style={{ width: '3rem', height: '3rem' }} role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <h4 className="mt-4 text-primary">Loading your courses...</h4>
+          <p className="text-muted">Please wait while we prepare your learning dashboard</p>
         </div>
+      </div>
     );
+  }
+
+  if (error) {
+    return (
+      <div className="d-flex justify-content-center align-items-center vh-100 bg-light">
+        <div className="alert alert-danger text-center p-4" style={{ maxWidth: '500px' }}>
+          <i className="fas fa-exclamation-triangle fa-2x mb-3 text-danger"></i>
+          <h4>Oops! Something went wrong</h4>
+          <p className="mb-3">{error}</p>
+          <button
+            className="btn btn-primary"
+            onClick={() => window.location.reload()}
+          >
+            <i className="fas fa-sync-alt me-2"></i> Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <ScrollToTop />
+      <div className="course-page">
+        <AnimatePresence>
+          {purchaseSuccess.show && (
+            <PurchaseSuccessModal
+              courseName={purchaseSuccess.courseName}
+              onClose={() => setPurchaseSuccess({ show: false, courseName: '' })}
+            />
+          )}
+        </AnimatePresence>
+
+        <Section
+          title="🎓 Your Learning Journey"
+          courses={purchasedCourses}
+          highlight
+          gradient={gradients.purchased}
+        />
+
+        <Section
+          title="📚 Your Created Courses"
+          courses={createdCourses}
+          gradient={gradients.created}
+        />
+
+        <Section
+          title="🌐 Explore More Courses"
+          courses={otherCourses}
+          gradient={gradients.others}
+          onPurchase={handlePurchase}
+          purchasingCourseId={purchasingCourseId}
+        />
+
+        {/* Empty state if no courses at all */}
+        {purchasedCourses.length === 0 &&
+          createdCourses.length === 0 &&
+          otherCourses.length === 0 && (
+            <div className="container py-5 my-5 text-center">
+              <div className="empty-state bg-white p-5 rounded-4 shadow-sm">
+                <i className="fas fa-book-open fa-4x text-muted mb-4"></i>
+                <h3 className="mb-3">No Courses Found</h3>
+                <p className="text-muted mb-4">
+                  It looks like you haven't purchased or created any courses yet.
+                  Explore our catalog to get started!
+                </p>
+                <button
+                  className="btn btn-primary btn-lg px-4"
+                  onClick={() => window.location.href = "/courses"}
+                >
+                  <i className="fas fa-search me-2"></i> Browse Courses
+                </button>
+              </div>
+            </div>
+          )}
+      </div>
+    </>
+  );
 };
 
-export default AvailableCourses;
+export default CoursePage;
