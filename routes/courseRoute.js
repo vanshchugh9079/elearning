@@ -18,144 +18,6 @@ import crypto from 'crypto';
 /**
  * Create a Razorpay order for course purchase
  */
-let createOrder = async (req, res) => {
-    const razorpay = new Razorpay({
-        key_id: process.env.RAZORPAY_KEY_ID,
-        key_secret: process.env.RAZORPAY_KEY_SECRET
-    });
-    try {
-        const { courseId } = req.params;
-        const userId = req.user.id;
-
-        // Validate course exists
-        const course = await Course.findById(courseId);
-        if (!course) {
-            return res.status(404).json({
-                success: false,
-                message: 'Course not found'
-            });
-        }
-
-        // Check if user already purchased the course
-        const user = await User.findById(userId);
-        if (user.subscription.includes(courseId)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Course already purchased'
-            });
-        }
-
-        // Create order options
-        const options = {
-            amount: course.price * 100, // Razorpay expects amount in paise
-            currency: 'INR',
-            receipt: `course_${courseId}_${Date.now()}`,
-            payment_capture: 1, // Auto-capture payment
-            notes: {
-                courseId: courseId.toString(),
-                userId: userId.toString()
-            }
-        };
-
-        // Create Razorpay order
-        const order = await razorpay.orders.create(options);
-
-        res.status(200).json({
-            success: true,
-            orderId: order.id,
-            amount: order.amount,
-            currency: order.currency,
-            key: process.env.RAZORPAY_KEY_ID
-        });
-    } catch (err) {
-        console.error('Error creating Razorpay order:', err);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to create payment order',
-            error: err.message
-        });
-    }
-};
-
-/**
- * Verify Razorpay payment and enroll user in course
- */
-let verifyPayment = async (req, res) => {
-    try {
-        const {
-            razorpay_payment_id,
-            razorpay_order_id,
-            razorpay_signature,
-            courseId
-        } = req.body;
-        const userId = req.user.id;
-
-        // Verify payment signature
-        const generatedSignature = crypto
-            .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-            .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-            .digest('hex');
-
-        if (generatedSignature !== razorpay_signature) {
-            return res.status(400).json({
-                success: false,
-                message: 'Payment verification failed - invalid signature'
-            });
-        }
-
-        // Get user and course
-        const user = await User.findById(userId);
-        const course = await Course.findById(courseId);
-
-        if (!user || !course) {
-            return res.status(404).json({
-                success: false,
-                message: 'User or course not found'
-            });
-        }
-
-        // Check if user already purchased the course (double-check)
-        if (user.subscription.includes(courseId)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Course already purchased'
-            });
-        }
-
-        // Add course to user's subscription
-        user.subscription.push(courseId);
-        await user.save();
-
-        // Add user to course's students
-        course.students.push(user._id);
-        course.studentsCount = course.students.length;
-        await course.save();
-
-        // Payment success response
-        res.status(200).json({
-            success: true,
-            message: 'Payment verified and course enrolled successfully',
-            course: {
-                id: course._id,
-                name: course.name,
-                thumbnail: course.thumbnail
-            },
-            paymentId: razorpay_payment_id
-        });
-
-    } catch (err) {
-        console.error('Error verifying payment:', err);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to verify payment',
-            error: err.message
-        });
-    }
-};
-const router = Router();
-
-
-// Get full or limited course details
 let singleCourse = async (req, res) => {
     try {
 
@@ -306,6 +168,151 @@ const searchCourse = async (req, res) => {
     }
 };
 
+const createOrder = async (req, res) => {
+    const razorpay = new Razorpay({
+        key_id: process.env.RAZORPAY_KEY_ID,
+        key_secret: process.env.RAZORPAY_KEY_SECRET
+    });
+    try {
+        const { courseId } = req.params;
+        const userId = req.user.id;
+
+        // Validate course exists
+        const course = await Course.findById(courseId);
+        if (!course) {
+            return res.status(404).json({
+                success: false,
+                message: 'Course not found'
+            });
+        }
+
+        // Check if user already purchased the course
+        const user = await User.findById(userId);
+        if (user.subscription.includes(courseId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Course already purchased'
+            });
+        }
+
+        // For free courses, skip payment processing
+        if (course.price === 0) {
+            return res.status(200).json({
+                success: true,
+                message: 'Free course - no payment required',
+                courseId: courseId
+            });
+        }
+
+        // Create order options
+        const options = {
+            amount: course.price * 100, // Razorpay expects amount in paise
+            currency: 'INR',
+            receipt: `course_${courseId}_${Date.now()}`,
+            payment_capture: 1, // Auto-capture payment
+            notes: {
+                courseId: courseId.toString(),
+                userId: userId.toString()
+            }
+        };
+
+        // Create Razorpay order
+        const order = await razorpay.orders.create(options);
+
+        res.status(200).json({
+            success: true,
+            orderId: order.id,
+            amount: order.amount,
+            currency: order.currency,
+            key: process.env.RAZORPAY_KEY_ID
+        });
+    } catch (err) {
+        console.error('Error creating Razorpay order:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to create payment order',
+            error: err.message
+        });
+    }
+};
+
+/**
+ * Verify Razorpay payment and enroll user in course
+ */
+const verifyPayment = async (req, res) => {
+    try {
+        const {
+            razorpay_payment_id,
+            razorpay_order_id,
+            razorpay_signature,
+            courseId
+        } = req.body;
+        const userId = req.user.id;
+
+        // Verify payment signature
+        const generatedSignature = crypto
+            .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+            .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+            .digest('hex');
+
+        if (generatedSignature !== razorpay_signature) {
+            return res.status(400).json({
+                success: false,
+                message: 'Payment verification failed - invalid signature'
+            });
+        }
+
+        // Get user and course
+        const user = await User.findById(userId);
+        const course = await Course.findById(courseId);
+
+        if (!user || !course) {
+            return res.status(404).json({
+                success: false,
+                message: 'User or course not found'
+            });
+        }
+
+        // Check if user already purchased the course (double-check)
+        if (user.subscription.includes(courseId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Course already purchased'
+            });
+        }
+
+        // Add course to user's subscription
+        user.subscription.push(courseId);
+        await user.save();
+
+        // Add user to course's students
+        course.students.push(user._id);
+        course.studentsCount = course.students.length;
+        await course.save();
+
+        // Payment success response
+        res.status(200).json({
+            success: true,
+            message: 'Payment verified and course enrolled successfully',
+            course: {
+                id: course._id,
+                name: course.name,
+                thumbnail: course.thumbnail
+            },
+            paymentId: razorpay_payment_id
+        });
+
+    } catch (err) {
+        console.error('Error verifying payment:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to verify payment',
+            error: err.message
+        });
+    }
+};
+
+const router = Router();
 
 // Routes
 router.post('/create', tokenCheck, upload.single('file'), createCourse);
@@ -318,23 +325,8 @@ router.get("/purchased/get", tokenCheck, errorHandler(getYourPurchasedCourse));
 router.get("/get", errorHandler(getAllCourse));
 router.delete("/lecture/:id", tokenCheck, deleteLecture)
 router.delete("/:id", tokenCheck, errorHandler(deleteCourse))
- router.post("/:id/create-order", tokenCheck, errorHandler(async (req, res) => {
-    const courseId = req.params.id;
-    const course = await Course.findById(courseId);
+// Payment routes
+router.post("/:id/create-order", tokenCheck, errorHandler(createOrder));
+router.post("/verify-payment", tokenCheck, errorHandler(verifyPayment));
 
-    if (!course) {
-        return res.status(404).json({ message: "Course not found" });
-    }
-
-    const amount = course.price * 100; // Convert to paise
-    const currency = "INR";
-
-    req.body = { amount, currency, courseId };
-    return createOrder(req, res);
-}));
-
-router.post("/verify-payment", tokenCheck, errorHandler(async (req, res) => {
-    // The verifyPayment controller will handle the verification and course enrollment
-    return verifyPayment(req, res);
-}));
 export default router;
