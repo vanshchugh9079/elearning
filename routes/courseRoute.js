@@ -169,7 +169,7 @@ router.post('/create', tokenCheck, upload.single('file'), createCourse);
 router.post("/:id/add", tokenCheck, upload.single('file'), createLecture);
 router.post("/:id/purchase", tokenCheck, errorHandler(purchaseCourse));
 router.get("/get/:id", tokenCheck, singleCourse);
-router.get("/search",searchCourse)
+router.get("/search/:input",searchCourse)
 router.get("/you", tokenCheck, errorHandler(getYourCourse))
 router.get("/purchased/get", tokenCheck, errorHandler(getYourPurchasedCourse));
 router.get("/get", errorHandler(getAllCourse));
