@@ -69,8 +69,8 @@ const getYourPurchasedCourse = async (req, res) => {
         const user = req.user;
         const getUser = await User.findById(user.id)
             .populate("watchedLecture").populate({
-                path:"subscription",
-                populate:"createdBy"
+                path: "subscription",
+                populate: "createdBy"
             });
 
         // Transform each course into a plain JS object and calculate watched percentage
@@ -93,8 +93,8 @@ const getYourPurchasedCourse = async (req, res) => {
                 watchedPercentage
             };
         });
-        
-        
+
+
         res.status(200).json({
             data: updatedSubscriptions,
             message: "Your courses with watched percentages fetched successfully"
@@ -111,7 +111,7 @@ const getYourPurchasedCourse = async (req, res) => {
 // Purchase a course
 let getYourCourse = async (req, res) => {
     const user = req.user;
-    let course = await Course.find({ createdBy: user.id }).populate("createdBy","name")
+    let course = await Course.find({ createdBy: user.id }).populate("createdBy", "name")
     res.status(200).json({
         data: course,
         message: "Your courses fetched successfully"
@@ -143,12 +143,33 @@ const purchaseCourse = async (req, res) => {
         res.status(500).json({ message: "Error purchasing course", error: err.message });
     }
 };
+const searchCourse = async (req, res) => {
+    try {
+        let { input } = req.params;
+
+        if (!input) {
+            return res.status(400).json({ message: "Search input is required" });
+        }
+
+        // Case-insensitive search on course title (or any other relevant field)
+        const courses = await Course.find({
+            name: { $regex: input, $options: "i" }
+        });
+
+        res.status(200).json({ data: courses });
+    } catch (error) {
+        console.error("Error searching courses:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
 
 // Routes
 router.post('/create', tokenCheck, upload.single('file'), createCourse);
 router.post("/:id/add", tokenCheck, upload.single('file'), createLecture);
 router.post("/:id/purchase", tokenCheck, errorHandler(purchaseCourse));
 router.get("/get/:id", tokenCheck, singleCourse);
+router.get("/search",searchCourse)
 router.get("/you", tokenCheck, errorHandler(getYourCourse))
 router.get("/purchased/get", tokenCheck, errorHandler(getYourPurchasedCourse));
 router.get("/get", errorHandler(getAllCourse));
