@@ -172,11 +172,12 @@ const createOrder = async (req, res) => {
     const razorpay = new Razorpay({
         key_id: process.env.RAZORPAY_KEY_ID,
         key_secret: process.env.RAZORPAY_KEY_SECRET
-    });
-    try {
-        const { courseId } = req.params;
-        const userId = req.user.id;
+    });;
 
+    try {
+        const { id: courseId } = req.params;
+        const userId = req.user.id;
+        console.log(courseId)
         // Validate course exists
         const course = await Course.findById(courseId);
         if (!course) {
