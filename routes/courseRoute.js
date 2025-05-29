@@ -209,7 +209,7 @@ const createOrder = async (req, res) => {
         const options = {
             amount: course.price * 100, // Razorpay expects amount in paise
             currency: 'INR',
-            receipt: `course_${courseId}_${Date.now()}`,
+            receipt: `course_${course.name}_${Date.now()}`,
             payment_capture: 1, // Auto-capture payment
             notes: {
                 courseId: courseId.toString(),
