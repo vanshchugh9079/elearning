@@ -145,7 +145,7 @@ const registerSocketHandler = (io, socket) => {
     }
     
     const fullMessage = {
-      ...message,
+      ...message,user,
       timestamp: new Date().toLocaleTimeString(),
     };
     

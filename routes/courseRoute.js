@@ -209,13 +209,14 @@ const createOrder = async (req, res) => {
         const options = {
             amount: course.price * 100, // Razorpay expects amount in paise
             currency: 'INR',
-            receipt: `${course.name} purchased successfully`,
+            receipt: ``,
             payment_capture: 1, // Auto-capture payment
             notes: {
                 courseId: courseId.toString(),
                 userId: userId.toString()
             }
         };
+        console.log(options.receipt.length)
 
         // Create Razorpay order
         const order = await razorpay.orders.create(options);
@@ -248,7 +249,7 @@ const verifyPayment = async (req, res) => {
             razorpay_signature,
             courseId
         } = req.body;
-        const userId = req.user.id;
+        const userId = req.user._id;
 
         // Verify payment signature
         const generatedSignature = crypto
