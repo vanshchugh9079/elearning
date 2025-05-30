@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Peer from 'peerjs';
 import { useParams } from 'react-router-dom';
-import { useSocket } from '../socket/SocketContext';
+import { useSocket } from '../../socket/SocketContext';
 import { useSelector } from 'react-redux';
-import { api } from '../utils/constant';
+import { api } from '../../utils/constant';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
-import '../css/liveclass/liveClass.css';
+import '../../css/liveclass/liveClass.css';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const GoogleMeetUI = () => {
@@ -35,8 +35,9 @@ const GoogleMeetUI = () => {
   const [activeControls, setActiveControls] = useState(true);
   const [connectionQuality, setConnectionQuality] = useState('good');
   const [notifications, setNotifications] = useState([]);
-  const [showMobileControls, setShowMobileControls] = useState(true);
+  const [showMobileControls, setShowMobileControls] = useState(false);
   const controlsBarRef = useRef(null);
+
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 992);
@@ -47,6 +48,23 @@ const GoogleMeetUI = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (controlsBarRef.current && !controlsBarRef.current.contains(event.target)) {
+        setShowMobileControls(false);
+      }
+    };
+
+    if (showMobileControls) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [showMobileControls]);
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -119,6 +137,8 @@ const GoogleMeetUI = () => {
       setCamera(true);
       setMic(true);
       setCameraError(null);
+      addNotification('Camera and microphone activated');
+
       participants.forEach(({ peerId }) => {
         const call = peerRef.current.call(peerId, stream);
         call.on('stream', remoteStream => {
@@ -147,6 +167,7 @@ const GoogleMeetUI = () => {
       localStreamRef.current = null;
       setCamera(false);
       setMic(false);
+      addNotification('Camera turned off');
     }
   };
 
@@ -365,15 +386,12 @@ const GoogleMeetUI = () => {
       }
     });
 
-    socket.on('lower-hand', ({ userId }) => {
+    socket.on('lower-hand', ({ userId}) => {
       setRaisedHands(prev => prev.filter(id => id !== userId));
     });
 
     socket.on('receive-message', (message) => {
-      if(message.user._id==user._id){
-        return;
-      }
-      setChatMessages(prev => [...prev, { ...message, isMe: (message.user._id==user._id) }]);
+      setChatMessages(prev => [...prev, { ...message, isMe: false }]);
       if (activeTab !== 'chat') {
         addNotification(`New message from ${message.sender}`);
       }
@@ -410,7 +428,7 @@ const GoogleMeetUI = () => {
         window.removeEventListener('orientationchange', handleOrientationChange);
       }
     };
-  }, [socket]);
+  }, [socket, user, courseId, isHost, isMobile, activeTab]);
 
   const handleEndCall = () => {
     if (isHost) {
@@ -450,6 +468,7 @@ const GoogleMeetUI = () => {
         localStreamRef.current = stream;
         setCamera(true);
         setCameraError(null);
+        addNotification('Camera turned on');
 
         participants.forEach(({ peerId }) => {
           const call = peerRef.current.call(peerId, stream);
@@ -477,41 +496,38 @@ const GoogleMeetUI = () => {
 
   const toggleMic = async () => {
     try {
-      if (mic) {
-        stopStream();
-        // Stop all audio tracks (disable mic)
-        if (localStreamRef.current) {
-          localStreamRef.current.getAudioTracks().forEach(track => track.stop());
-
-          // Remove audio tracks from the stream
-          localStreamRef.current = new MediaStream(
-            localStreamRef.current.getVideoTracks() // keep only video tracks
-          );
-        }
-
-        setMic(false);
-      } else {
-        // Request audio stream
-        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-        // If video already exists in localStreamRef, merge audio into it
-        if (localStreamRef.current) {
-          const videoTracks = localStreamRef.current.getVideoTracks();
-          const mergedStream = new MediaStream([...videoTracks, ...audioStream.getAudioTracks()]);
-          localStreamRef.current = mergedStream;
+      if (localStreamRef.current) {
+        const audioTracks = localStreamRef.current.getAudioTracks();
+        if (audioTracks.length > 0) {
+          const newMicState = !mic;
+          audioTracks.forEach(track => (track.enabled = newMicState));
+          setMic(newMicState);
         } else {
-          localStreamRef.current = audioStream;
-        }
+          const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const newAudioTrack = audioStream.getAudioTracks()[0];
+          localStreamRef.current.addTrack(newAudioTrack);
+          setMic(true);
 
+          participants.forEach(({ peerId }) => {
+            if (peerId !== peerRef.current?.id) {
+              const call = peerRef.current.call(peerId, localStreamRef.current);
+              call.on('stream', remoteStream => {
+                setParticipants(prev => prev.map(p =>
+                  p.peerId === call.peer ? { ...p, stream: remoteStream } : p
+                ));
+              });
+            }
+          });
+        }
+      } else {
+        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        localStreamRef.current = audioStream;
         setMic(true);
 
-        // Reconnect to participants with updated stream
         participants.forEach(({ peerId }) => {
-          const call = peerRef.current.call(peerId, localStreamRef.current);
+          const call = peerRef.current.call(peerId, audioStream);
           call.on('stream', remoteStream => {
-            setParticipants(prev => prev.map(p =>
-              p.peerId === call.peer ? { ...p, stream: remoteStream } : p
-            ));
+            setParticipants(prev => prev.map(p => p.peerId === call.peer ? { ...p, stream: remoteStream } : p));
           });
         });
       }
@@ -522,42 +538,21 @@ const GoogleMeetUI = () => {
     }
   };
 
+  const renderVideo = (stream, muted = false) => (
+    <motion.video
+      className="w-100 h-100 object-fit-cover rounded"
+      autoPlay
+      playsInline
+      muted={muted}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      ref={video => {
+        if (video && stream) video.srcObject = stream;
+      }}
+    />
+  );
 
-  const renderVideo = (stream, muted = false, isScreenShare = false) => {
-    // Check if stream has video tracks
-    const hasVideo = stream?.getVideoTracks().length > 0;
-    const hasAudio = stream?.getAudioTracks().length > 0;
-
-    if (!hasVideo) {
-      // Audio-only stream - show placeholder with audio indicator
-      return (
-        <motion.div
-          className="w-100 h-100 d-flex flex-column justify-content-center align-items-center bg-gradient-primary rounded overflow-hidden position-relative"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          <div className="audio-indicator">
-            <i className="bi bi-mic-fill" />
-          </div>
-        </motion.div>
-      );
-    }
-    return (
-      <motion.video
-        className="w-100 h-100 object-fit-cover rounded"
-        autoPlay
-        playsInline
-        muted={muted}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        ref={video => {
-          if (video && stream) video.srcObject = stream;
-        }}
-      />
-    );
-  };
   const renderPlaceholder = (label, isYou = false) => (
     <motion.div
       className={`w-100 h-100 d-flex flex-column justify-content-center align-items-center ${isYou ? 'bg-gradient-primary' : 'bg-gradient-secondary'} rounded overflow-hidden position-relative`}
@@ -713,7 +708,7 @@ const GoogleMeetUI = () => {
       <>
         {
           activeTab == "main" &&
-          <div className="d-flex gap-3 ms-lg-auto ">
+          <>
             <motion.button
               onClick={toggleMic}
               className={`btn rounded-pill ${mic ? 'btn-light' : 'btn-danger'}`}
@@ -802,44 +797,16 @@ const GoogleMeetUI = () => {
               <i className={`bi ${isHost ? 'bi-telephone-x-fill' : 'bi-telephone-outbound-fill'}`} />
               <span className="ms-1 d-none d-sm-inline">{isHost ? '' : 'Leave'}</span>
             </motion.button>
-          </div>
+          </>
         }
       </>
     );
   });
-  const TopBar = () => {
-    return (
-      <div className="w-100 ms-lg-auto">
-        <div className="meeting-info d-flex align-items-center w-75 ms-auto  d-lg-none d-inline-block  top-0 start-0 z-1 justify-content-between ">
-          <span className="meeting-code">
-            <i className="bi bi-shield-lock me-2"></i>
-            <strong>{courseId}</strong>
-          </span>
-          {isMobile && (
-            <motion.button
-              className="btn btn-sm btn-outline-light ms-2"
-              onClick={() => {
-                navigator.clipboard.writeText(window.location.href);
-                addNotification('Meeting link copied to clipboard');
-              }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <i className="bi bi-link-45deg"></i> Copy Link
-            </motion.button>
-          )}
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="google-meet-container position-fixed w-100 h-100 bg-dark">
       {/* Connection quality indicator */}
-      {
-        isMobile &&
-        <TopBar />
-      }
-      <div className={`connection-quality z-1 ${connectionQuality}`}>
+      <div className={`connection-quality ${connectionQuality}`}>
         <i className={`bi ${connectionQuality === 'excellent' ? 'bi-wifi' :
           connectionQuality === 'good' ? 'bi-wifi' :
             connectionQuality === 'fair' ? 'bi-wifi-2' : 'bi-wifi-1'}`} />
@@ -847,7 +814,7 @@ const GoogleMeetUI = () => {
       </div>
 
       {/* Notifications */}
-      <div className="notifications-container z-1">
+      <div className="notifications-container">
         <AnimatePresence>
           {notifications.map((notification) => (
             <motion.div
@@ -886,7 +853,7 @@ const GoogleMeetUI = () => {
         {/* Main content area with three tabs */}
         <div className='m-0 p-0 d-flex video-main-view-p w-100 position-relative'>
           {/* Meeting info for mobile */}
-          <div className="meeting-info d-none align-items-center d-lg-none d-inline-block position-absolute top-0 start-0 z-3">
+          <div className="meeting-info d-flex align-items-center d-lg-none d-inline-block position-absolute top-0 start-0 z-3">
             <span className="meeting-code">
               <i className="bi bi-shield-lock me-2"></i>
               <strong>{courseId}</strong>
@@ -936,7 +903,7 @@ const GoogleMeetUI = () => {
           {/* Participants tab */}
           {activeTab === 'participants' && (
             <motion.div
-              className="participants-tab z-3  w-100 h-100 bg-dark position-fixed fixed-top w-100 h-100 text-light p-3"
+              className="participants-tab w-100 h-100 bg-dark text-light p-3"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -1006,7 +973,7 @@ const GoogleMeetUI = () => {
           {/* Chat tab */}
           {activeTab === 'chat' && (
             <motion.div
-              className="chat-tab z-3 w-100 h-100 bg-dark position-fixed fixed-top text-light d-flex flex-column"
+              className="chat-tab w-100 h-100 bg-dark text-light d-flex flex-column"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -1030,7 +997,7 @@ const GoogleMeetUI = () => {
                 ) : (
                   chatMessages.map((msg, index) => (
                     <motion.div
-
+                    
                       key={index}
                       className={`message ${msg.isMe ? 'me' : ''}`}
                       initial={{ opacity: 0, y: 10 }}
@@ -1038,8 +1005,8 @@ const GoogleMeetUI = () => {
                       transition={{ duration: 0.2 }}
                     >
                       {
-                        console.log(msg)
-                      }
+                      console.log(msg)
+                    }
                       <div className="message-sender">{msg.sender}{msg.isMe && ' (You)'}</div>
                       <div className="message-text">{msg.text}</div>
                       <div className="message-time">{msg.timestamp}</div>
@@ -1052,7 +1019,7 @@ const GoogleMeetUI = () => {
                 <div className="input-group">
                   <input
                     type="text"
-                    className="form-control text-whites "
+                    className="form-control"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
@@ -1087,18 +1054,13 @@ const GoogleMeetUI = () => {
               whileTap={{ scale: 0.98 }}
               layoutId="local-video"
             >
-              {screenStreamRef.current ? (
-                renderVideo(screenStreamRef.current, true, true)
-              ) : localStreamRef.current ? (
-                renderVideo(localStreamRef.current, true)
-              ) : (
-                renderPlaceholder('You', true)
-              )}
+              {localStreamRef.current || screenStreamRef.current
+                ? renderVideo(screenStreamRef.current || localStreamRef.current, true)
+                : renderPlaceholder('You', true)}
               <span className="video-tile-label">You</span>
               {pinned === 'local' && <span className="pin-overlay m-0"><i className="bi bi-pin-fill" /></span>}
               {!camera && !screenShare && <div className="camera-off-overlay"><i className="bi bi-camera-video-off" /></div>}
               {!mic && <div className="mic-off-overlay"><i className="bi bi-mic-mute" /></div>}
-              {screenShare && <div className="screen-share-indicator"><i className="bi bi-laptop" /></div>}
             </motion.div>
 
             {participants.map(p => (
@@ -1125,7 +1087,7 @@ const GoogleMeetUI = () => {
                         ✋
                       </motion.div>
                     )}
-                    {!p.stream?.getVideoTracks().length && <div className="camera-off-overlay"><i className="bi bi-camera-video-off" /></div>}
+                    {!p.stream && <div className="camera-off-overlay"><i className="bi bi-camera-video-off" /></div>}
                   </div>
                 </div>
                 {p.stream ? renderVideo(p.stream) : renderPlaceholder(p.name)}
@@ -1154,7 +1116,7 @@ const GoogleMeetUI = () => {
         {(activeControls || showMobileControls) && (
           <motion.div
             ref={controlsBarRef}
-            className={`control-bar z-1 bg-dark text-light d-flex justify-content-between align-items-center py-2 px-3 ${isMobile ? 'mobile-controls' : ''
+            className={`control-bar bg-dark text-light d-flex justify-content-between align-items-center py-2 px-3 ${isMobile ? 'mobile-controls' : ''
               }`}
             initial={{ y: 100 }}
             animate={{ y: 0 }}
@@ -1171,28 +1133,34 @@ const GoogleMeetUI = () => {
               </div>
             )}
 
-            <div className="control-buttons d-flex w-100 justify-content-center ">
-              {
-                showMobileControls &&
-                <ControlButtons
-                  mic={mic}
-                  camera={camera}
-                  screenShare={screenShare}
-                  raisedHands={raisedHands}
-                  user={user}
-                  participants={participants}
-                  chatMessages={chatMessages}
-                  isHost={isHost}
-                  toggleMic={toggleMic}
-                  toggleCamera={toggleCamera}
-                  toggleScreenShare={toggleScreenShare}
-                  raiseHand={raiseHand}
-                  lowerHand={lowerHand}
-                  handleEndCall={handleEndCall}
-                  activeTab={activeTab}
-                />
-              }
+            <div className="control-buttons d-flex gap-2">
+              <ControlButtons
+                mic={mic}
+                camera={camera}
+                screenShare={screenShare}
+                raisedHands={raisedHands}
+                user={user}
+                participants={participants}
+                chatMessages={chatMessages}
+                isHost={isHost}
+                toggleMic={toggleMic}
+                toggleCamera={toggleCamera}
+                toggleScreenShare={toggleScreenShare}
+                raiseHand={raiseHand}
+                lowerHand={lowerHand}
+                handleEndCall={handleEndCall}
+                activeTab={activeTab}
+              />
             </div>
+
+            {isMobile && (
+              <button
+                className="btn btn-outline-secondary rounded-circle ms-2"
+                onClick={() => setShowMobileControls(false)}
+              >
+                <i className="bi bi-x"></i>
+              </button>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

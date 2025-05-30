@@ -63,11 +63,14 @@
 
 /* Notifications - More Refined */
 .notifications-container {
+  width: 100% !important;
   position: fixed;
   top: 20px;
   right: 20px;
   z-index: 1000;
   display: flex;
+  justify-content: center !important;
+  align-items: center !important;
   flex-direction: column;
   gap: 12px;
 }
@@ -81,10 +84,37 @@
   max-width: 320px;
   backdrop-filter: blur(10px);
   border: 1px solid transparent;
-  transform-origin: top right;
+  transform-origin: top center;
   display: flex;
   align-items: center;
   gap: 10px;
+  z-index: -1 !important;
+}
+
+/* Add these to your CSS file */
+.audio-indicator {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: white;
+  z-index: 2;
+}
+
+.audio-indicator i {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.screen-share-indicator {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 2px 5px;
+  border-radius: 4px;
+  color: white;
+  font-size: 0.8rem;
 }
 
 .notification i {
@@ -96,7 +126,12 @@
   border-color: rgba(138, 180, 248, 0.3);
   color: white;
 }
-
+.form-control{
+  color: white !important;
+}
+input{
+  color: white !important;
+}
 .notification.error {
   background: rgba(234, 67, 53, 0.9);
   border-color: rgba(242, 139, 130, 0.3);

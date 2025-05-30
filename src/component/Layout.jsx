@@ -16,7 +16,7 @@ export default function Layout() {
         <div className=' full-height'>
 
             {
-                !path.includes("live")&& !path.includes("create") &&
+                !path.includes("live")&& !path.includes("create")  &&
                 <NavigationBar />
             }
             <Outlet />

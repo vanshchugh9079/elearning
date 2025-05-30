@@ -1,4 +1,34 @@
 /* Add these styles to your login.css file */
+/* Custom scrollbar for the card - Remove up/down buttons */
+.cont-reg::-webkit-scrollbar {
+  display: none;
+  width: 8px !important;
+  height: 8px !important; /* For horizontal scrollbars if needed */
+}
+
+.cont-reg::-webkit-scrollbar-button {
+  display: none !important; /* This removes the up/down buttons */
+}
+
+.cont-reg::-webkit-scrollbar-track {
+  background: rgba(245, 245, 245, 0.5) !important;
+  border-radius: 0 1.25rem 1.25rem 0  !important;
+}
+
+.cont-reg ::-webkit-scrollbar-thumb {
+  background-color: #646cff !important;
+  border-radius: 4px !important;
+}
+
+.cont-reg::-webkit-scrollbar-thumb:hover {
+  background-color: #535bf2 !important;
+}
+
+/* For Firefox - buttons are automatically hidden when using 'thin' */
+.cont-reg{
+  scrollbar-width: thin !important;
+  scrollbar-color: #646cff rgba(245, 245, 245, 0.5) !important;
+}
 @keyframes float {
   0% { transform: translateY(0px); }
   50% { transform: translateY(-20px); }

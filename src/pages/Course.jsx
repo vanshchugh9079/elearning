@@ -57,7 +57,6 @@ const CourseCard = ({
     }
   };
 
-  // Add Join LiveClass button if course is live and purchased
   const enhancedButtons = [...buttons];
   if (price === "Purchased" && liveStatus === "live" && !buttons.some(btn => btn.label === "Join LiveClass")) {
     enhancedButtons.unshift({
@@ -72,8 +71,7 @@ const CourseCard = ({
       initial={{ opacity: 0, y: 20 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.5 }}
-      className={`course-card card h-100 border-0 rounded-4 overflow-hidden ${isCompleted ? "completed-course" : ""
-        }`}
+      className={`course-card card h-100 border-0 rounded-4 overflow-hidden ${isCompleted ? "completed-course" : ""}`}
       style={{
         position: "relative",
         boxShadow: "0 10px 20px rgba(0,0,0,0.08)",
@@ -160,13 +158,12 @@ const CourseCard = ({
           {enhancedButtons.map((btn, idx) => (
             <div className={enhancedButtons.length > 2 && idx === enhancedButtons.length - 1 ? "col-12" : "col-6"} key={idx}>
               <button
-                className={`btn btn-sm w-100 rounded-pill ${btn.variant} ${btn.label === "Continue" && expanded ? "active" : ""
-                  }`}
+                className={`btn btn-sm w-100 rounded-pill ${btn.variant} ${btn.label === "Continue" && expanded ? "active" : ""}`}
                 onClick={() => handleButtonClick(btn.label, courseId)}
                 disabled={isPurchasing && btn.label === "Purchase"}
                 style={{
-                  height: '50px', // Fixed height
-                  minWidth: '100px', // Minimum width
+                  height: '50px',
+                  minWidth: '100px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -251,8 +248,7 @@ const Section = ({ title, courses, highlight = false, gradient, onPurchase, purc
     >
       <div className="container position-relative">
         <div className="text-center mb-5">
-          <h2 className={`fw-bold position-relative d-inline-block ${highlight ? "text-white" : "text-dark"
-            }`}>
+          <h2 className={`fw-bold position-relative d-inline-block ${highlight ? "text-white" : "text-dark"}`}>
             {title}
             <span className="title-underline" />
           </h2>
@@ -341,6 +337,31 @@ const PurchaseSuccessModal = ({ courseName, onClose }) => {
   );
 };
 
+const PaymentProcessingModal = () => {
+  return (
+    <div className="modal-backdrop" style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.7)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 9999
+    }}>
+      <div className="modal-content bg-white rounded-4 p-5 text-center" style={{ maxWidth: '400px' }}>
+        <div className="spinner-border text-primary mb-3" style={{ width: '3rem', height: '3rem' }} role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+        <h4 className="mb-3">Processing Payment</h4>
+        <p className="text-muted">Please wait while we process your payment...</p>
+      </div>
+    </div>
+  );
+};
+
 const CoursePage = () => {
   const { user } = useSelector((state) => state.user);
   const [purchasedCourses, setPurchasedCourses] = useState([]);
@@ -349,12 +370,12 @@ const CoursePage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [purchasingCourseId, setPurchasingCourseId] = useState(null);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [purchaseSuccess, setPurchaseSuccess] = useState({
     show: false,
     courseName: ''
   });
 
-  // Gradient definitions for each section
   const gradients = {
     purchased: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
     created: "linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%)",
@@ -391,7 +412,7 @@ const CoursePage = () => {
         ? "Purchased"
         : course.price === 0
           ? "Free"
-          : `$${course.price || 0}`,
+          : `₹${course.price || 0}`,
       level: course.level || "Beginner",
       tags: course.tags || ["New"],
       image: course.thumbnail?.url || "https://source.unsplash.com/random/300x200/?education",
@@ -403,45 +424,169 @@ const CoursePage = () => {
     };
   };
 
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) {
+        return resolve();
+      }
+      
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      script.onload = () => {
+        console.log('Razorpay SDK loaded');
+        resolve();
+      };
+      script.onerror = () => {
+        console.error('Failed to load Razorpay SDK');
+        setError('Failed to load payment processor. Please try again later.');
+        resolve();
+      };
+      document.body.appendChild(script);
+    });
+  };
+
   const handlePurchase = async (courseId) => {
     try {
       setPurchasingCourseId(courseId);
+      setError(null);
 
+      // Find the course to purchase
+      const courseToPurchase = otherCourses.find(c => c.courseId === courseId);
+      if (!courseToPurchase) {
+        throw new Error('Course not found');
+      }
+
+      // If course is free, directly complete purchase
+      if (courseToPurchase.price === "Free" || courseToPurchase.price === "$0") {
+        await completePurchase(courseId, courseToPurchase);
+        return;
+      }
+
+      // For paid courses, initialize Razorpay payment
+      setPaymentProcessing(true);
+      
+      // Load Razorpay script if not already loaded
+      await loadRazorpayScript();
+
+      if (!window.Razorpay) {
+        throw new Error('Payment processor failed to load');
+      }
+
+      // Create order on backend
       const config = {
         headers: {
           Authorization: `Bearer ${user?.token}`,
         },
       };
 
-      const response = await api.post(`course/${courseId}/purchase`, {}, config);
+      const orderResponse = await api.post(`course/${courseId}/create-order`, {}, config);
+      if (!orderResponse.data.success) {
+        throw new Error(orderResponse.data.message || 'Failed to create order');
+      }
 
-      // Find the purchased course in otherCourses
-      const purchasedCourse = otherCourses.find(c => c.courseId === courseId);
+      const { orderId, amount, currency, key } = orderResponse.data;
+      console.log(orderResponse)
+      console.log(orderId)
+      // Razorpay options
+      const options = {
+        key: key,
+        amount: amount,
+        currency: currency,
+        name: 'educine',
+        description: `Purchase of ${courseToPurchase.title}`,
+        order_id: orderId,
+        handler: async (response) => {
+          try {
+            // Verify payment on backend
+            const verificationResponse = await api.post('course/verify-payment', {
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+              courseId: courseId
+            }, config);
+
+            if (verificationResponse.data.success) {
+              // Complete the purchase
+              await completePurchase(courseId, courseToPurchase);
+            } else {
+              throw new Error(verificationResponse.data.message || 'Payment verification failed');
+            }
+          } catch (err) {
+            setError(err.message || 'Payment verification failed');
+          } finally {
+            setPaymentProcessing(false);
+          }
+        },
+        prefill: {
+          name: user.name,
+          email: user.email,
+          contact: user.phone || ''
+        },
+        theme: {
+          color: '#4f46e5'
+        },
+        modal: {
+          ondismiss: () => {
+            setPaymentProcessing(false);
+            setPurchasingCourseId(null);
+          }
+        }
+      };
+
+      // Open Razorpay payment modal
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+
+      rzp.on('payment.failed', (response) => {
+        setError(response.error.description || 'Payment failed. Please try again.');
+        setPaymentProcessing(false);
+        setPurchasingCourseId(null);
+      });
+
+    } catch (err) {
+      console.error('Purchase error:', err);
+      setError(err.response?.data?.message || err.message || "Failed to initiate purchase");
+      setPaymentProcessing(false);
+      setPurchasingCourseId(null);
+    }
+  };
+
+  const completePurchase = async (courseId, courseToPurchase) => {
+    try {
+      const config = {
+        headers: {
+          Authorization: `Bearer ${user?.token}`,
+        },
+      };
+
+      // Call the purchase API
+      await api.post(`course/${courseId}/purchase`, {}, config);
 
       // Show success modal
       setPurchaseSuccess({
         show: true,
-        courseName: purchasedCourse?.title || 'the course'
+        courseName: courseToPurchase?.title || 'the course'
       });
 
       // Update the courses lists
       const updatedOtherCourses = otherCourses.filter(c => c.courseId !== courseId);
       setOtherCourses(updatedOtherCourses);
 
-      // Add to purchased courses with loading animation
-      if (purchasedCourse) {
+      // Add to purchased courses
+      if (courseToPurchase) {
         const newPurchasedCourse = {
-          ...purchasedCourse,
+          ...courseToPurchase,
           price: "Purchased",
           buttons: [{ label: "Continue", variant: "btn-success" }]
         };
-
         setPurchasedCourses(prev => [...prev, newPurchasedCourse]);
       }
 
     } catch (err) {
-      setError(err.response?.data?.message || err.message || "Failed to purchase course");
+      setError(err.response?.data?.message || err.message || "Failed to complete purchase");
     } finally {
+      setPaymentProcessing(false);
       setPurchasingCourseId(null);
     }
   };
@@ -530,6 +675,7 @@ const CoursePage = () => {
       <ScrollToTop />
       <div className="course-page">
         <AnimatePresence>
+          {paymentProcessing && <PaymentProcessingModal />}
           {purchaseSuccess.show && (
             <PurchaseSuccessModal
               courseName={purchaseSuccess.courseName}

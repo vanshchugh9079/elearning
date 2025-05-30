@@ -1,26 +1,243 @@
-.v-navbar {
+/* navigationBar.css */
+
+/* Base Styles */
+*{
+  text-decoration:  none !important;
+}
+
+.navbar {
+  transition: all 0.3s ease;
+  z-index: 1030;
+}
+
+.navbar-brand h2 {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+}
+
+.gradient-text {
+  background: linear-gradient(90deg, #3a7bd5, #00d2ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Animation for book icon */
+.animate-bounce {
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* Active link styling */
+.nav-link.active {
+  font-weight: 600;
+  color: #3a7bd5 !important;
+  position: relative;
+}
+
+.nav-link.active:after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 2px;
+  background-color: #3a7bd5;
+}
+
+/* Search Bar Styles */
+.input-group {
+  transition: all 0.3s ease;
+}
+
+.input-group input {
+  border-right: none;
+  padding: 8px 15px;
+}
+
+.input-group button {
+  padding: 8px 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Dropdown Menu */
+.dropdown-menu {
+  border: none;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  margin-top: 8px;
+}
+
+.dropdown-item {
+  padding: 8px 16px;
+  transition: all 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background-color: #f8f9fa;
+  color: #3a7bd5;
+}
+
+/* Mobile Menu Toggle Animation */
+.navbar-toggler {
+  transition: all 0.3s ease;
+}
+
+.navbar-toggler.cross .navbar-toggler-icon {
+  transform: rotate(90deg);
+  opacity: 0;
+}
+
+.navbar-toggler.cross:after {
+  content: '+';
+  position: absolute;
+  font-size: 1.8rem;
+  line-height: 1;
+  transform: rotate(45deg);
+  transition: all 0.3s ease;
+  color: #495057;
+}
+
+/* Mobile Menu Styles */
+@media (max-width: 991.98px) {
+  .navbar-collapse {
+    padding: 15px;
+    background-color: white;
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+    margin-top: 10px;
+    border-radius: 8px;
+  }
+  
+  .nav-item {
+    margin: 5px 0;
+  }
+  
+  .nav-link {
+    padding: 10px 15px !important;
+    border-radius: 5px;
+  }
+  
+  .nav-link:hover {
+    background-color: #f8f9fa;
+  }
+  
+  /* Mobile search bar */
+  .order-3 {
+    order: 3;
+  }
+  
+  /* Profile in mobile menu */
+  .navbar-collapse .dropdown {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+  }
+  
+  .navbar-collapse .dropdown-toggle {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    background: linear-gradient(to bottom, #ccc, #eee);
-    padding: 10px 20px;
-    border-bottom: 1px solid #ddd;
+    width: 100%;
+    padding: 10px 15px;
   }
   
-  .navbar-logo {
-    font-size: 24px;
-    font-weight: bold;
-    color: #5e2d91; /* Purple color */
+  .navbar-collapse .dropdown-toggle span {
+    margin-left: 10px;
   }
   
-  .navbar-links a {
-    margin: 0 10px;
-    text-decoration: none;
-    color: #333;
-    font-size: 16px;
-    transition: color 0.3s;
+  .navbar-collapse .dropdown-menu {
+    position: static !important;
+    transform: none !important;
+    border: none;
+    box-shadow: none;
+    margin-top: 0;
+    padding-left: 20px;
+  }
+}
+
+/* Small devices (landscape phones, 576px and up) */
+@media (min-width: 576px) and (max-width: 991.98px) {
+  .navbar-brand h2 .gradient-text {
+    display: inline !important;
+  }
+}
+
+/* Large devices (desktops, 992px and up) */
+@media (min-width: 992px) {
+  .navbar {
+    padding: 0.5rem 1rem;
   }
   
-  .navbar-links a:hover {
-    color: #5e2d91; /* Purple color on hover */
+  .nav-link {
+    padding: 0.5rem 1rem;
+    margin: 0 2px;
   }
+  
+  /* Center the desktop search */
+  .mx-auto {
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding: 0 15px;
+  }
+}
+
+/* Extra smooth transitions */
+.navbar,
+.navbar-brand,
+.nav-link,
+.dropdown-item,
+.input-group,
+.btn {
+  transition: all 0.3s ease;
+}
+
+/* Hover effects */
+.nav-link:hover:not(.active) {
+  color: #3a7bd5 !important;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(58, 123, 213, 0.3);
+}
+
+/* Profile image hover effect */
+.dropdown-toggle img {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.dropdown-toggle:hover img {
+  transform: scale(1.1);
+  box-shadow: 0 0 0 2px rgba(58, 123, 213, 0.5);
+}
+
+/* Mobile menu toggle icon animation */
+.navbar-toggler-icon {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.show .navbar-toggler-icon {
+  transform: rotate(90deg);
+  opacity: 0;
+}
+
+.show .navbar-toggler:after {
+  content: '+';
+  position: absolute;
+  font-size: 1.8rem;
+  line-height: 1;
+  transform: rotate(45deg);
+  transition: all 0.3s ease;
+  color: #495057;
+}

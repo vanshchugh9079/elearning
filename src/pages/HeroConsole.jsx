@@ -2,14 +2,15 @@ import React from 'react';
 import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
-import {useNavigate} from "react-router-dom"
-
+import { useNavigate } from "react-router-dom"
+import {useSelector} from "react-redux"
 // Import your images
 import carousel1 from './img/carousel-1.jpg';
 import carousel2 from './img/carousel-2.jpg';
 
 const HeroCarousel = () => {
-  let navigate=useNavigate();
+  const user=useSelector(state=>state.user)
+  let navigate = useNavigate();
   // Settings for the slider
   const settings = {
     dots: false,
@@ -18,7 +19,7 @@ const HeroCarousel = () => {
     slidesToShow: 1,
     slidesToScroll: 1,
     autoplay: true,
-    autoplaySpeed: 5000,
+    autoplaySpeed: 2000,
     fade: true,
     pauseOnHover: false,
     arrows: false
@@ -42,17 +43,17 @@ const HeroCarousel = () => {
       <Slider {...settings} className="header-carousel position-relative">
         {slides.map((slide, index) => (
           <div key={index} className="position-relative">
-            <img 
-              className="img-fluid w-100" 
-              src={slide.image} 
+            <img
+              className="img-fluid w-100"
+              src={slide.image}
               alt={`Slide ${index + 1}`}
-              style={{ 
+              style={{
                 height: '100vh',
                 objectFit: 'cover'
               }}
             />
-            <div 
-              className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center" 
+            <div
+              className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center"
               style={{ background: 'rgba(24, 29, 56, .7)' }}
             >
               <div className="container">
@@ -68,21 +69,26 @@ const HeroCarousel = () => {
                       {slide.description}
                     </p>
                     <div className="d-flex flex-wrap gap-3">
-                      <a 
+                      <a
                         className="btn btn-primary py-md-3 px-md-5 me-3"
-                        onClick={()=>{
+                        onClick={() => {
                           navigate("/about")
                         }}
                       >
                         Read More
                       </a>
-                      <a 
+                      <a
                         className="btn btn-light py-md-3 px-md-5"
-                        onClick={()=>{
-                          navigate("/login")
+                        onClick={() => {
+                          if(user.loggedIn){
+                            navigate("/course")
+                          }
+                          else{
+                            navigate("/login")
+                          }
                         }}
                       >
-                        Join Now
+                        {user.loggedIn ? "Explore Courses" : "Join Now"}
                       </a>
                     </div>
                   </div>
