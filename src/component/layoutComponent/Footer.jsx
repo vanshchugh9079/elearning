@@ -5,7 +5,7 @@ const Footer = () => {
     <div className="footer">
       <div className="footer-content">
         <p>© 2023 Your E-Learning Platform. All rights reserved.</p>
-        <p>Made With <span className="heart">❤️</span> Prashant Kumar Chaturvedi</p>
+        <p>Made With <span className="heart">❤️</span> Vansh Chugh</p>
       </div>
     </div>
   );
