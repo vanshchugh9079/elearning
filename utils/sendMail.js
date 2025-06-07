@@ -1,4 +1,4 @@
-import emailjs from '@emailjs/nodejs'; // ✅ Use Node.js version
+import emailjs from '@emailjs/nodejs';
 
 const sendEmail = async ({ to, subject, text, html }) => {
   if (!to || !subject || (!text && !html)) {
@@ -20,6 +20,7 @@ const sendEmail = async ({ to, subject, text, html }) => {
       templateParams,
       {
         publicKey: process.env.EMAILJS_PUBLIC_KEY,
+        privateKey: process.env.EMAILJS_PRIVATE_KEY, // 👈 Add this
       }
     );
     
