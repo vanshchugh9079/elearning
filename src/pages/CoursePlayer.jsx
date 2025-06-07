@@ -14,7 +14,7 @@ import {
   faGraduationCap, faChartLine, faListUl, faBookOpen, faArrowLeft
 } from '@fortawesome/free-solid-svg-icons';
 import { api } from '../utils/constant';
-
+import ScrollToTop from "../utils/ScrollToTop"
 const CourseDetailsViewer = () => {
   const pulse = {
     animate: {
@@ -248,6 +248,7 @@ const CourseDetailsViewer = () => {
 
   return (
     <>
+      <ScrollToTop/>
       <ToastContainer position="top-center" className="p-3">
         <Toast show={showToast} onClose={() => setShowToast(false)} autohide>
           <Toast.Body className="d-flex align-items-center">
