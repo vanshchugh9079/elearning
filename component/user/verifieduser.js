@@ -29,13 +29,14 @@ const verifyOtp = async (req, res) => {
         email,
         name: tempUser.name,
         password: tempUser.password,
-        avatar: tempUser.avatarData
+        avatar: tempUser.avatarData,
     });
 
     tempUsers.delete(email);
     const response = new ApiResponse({
         email: newUser.email,
         name: newUser.name,
+        user:newUser,
         message: "User verified and created successfully."
     }, 201, "User Registered");
 
