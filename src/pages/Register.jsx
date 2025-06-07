@@ -187,8 +187,7 @@ function RegisterForm() {
             });
             console.log("OTP verified:", response.data);
             setOtpVerified(true);
-
-            dispatch(setUserData({ user: response.data.user, loggedIn: true }));
+            dispatch(setUserData({ user: response.data.user || response.data.data.user , loggedIn: true }));
             AlertModal({
                 icon: "success",
                 title: "Your account created successfully",
