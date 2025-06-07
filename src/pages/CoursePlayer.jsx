@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -11,7 +11,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faPlay, faBookmark, faArrowRight, faVideo, faCheck, faClock,
   faChevronDown, faTrashAlt, faStar, faCertificate, faUserTie,
-  faGraduationCap, faChartLine, faListUl, faBookOpen
+  faGraduationCap, faChartLine, faListUl, faBookOpen, faArrowLeft
 } from '@fortawesome/free-solid-svg-icons';
 import { api } from '../utils/constant';
 
@@ -28,7 +28,8 @@ const CourseDetailsViewer = () => {
     }
   };
 
-  const { id } = useParams();
+  const { id, lecture:lectureIndex } = useParams();
+  const navigate = useNavigate();
   const { user: currentUser } = useSelector(state => state.user);
   const [courseData, setCourseData] = useState({
     name: "Loading Course...",
@@ -44,7 +45,7 @@ const CourseDetailsViewer = () => {
       avatar: { url: "" }
     }
   });
-  const [selectedLecture, setSelectedLecture] = useState(0);
+  const [selectedLecture, setSelectedLecture] = useState(lectureIndex||0);
   const [watchLater, setWatchLater] = useState([]);
   const [completedLectures, setCompletedLectures] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -81,13 +82,36 @@ const CourseDetailsViewer = () => {
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  const handleWatchClick = (index) => {
-    setSelectedLecture(index);
+  const handleWatchClick = async (index) => {
+    // Validate index is within bounds
+    const validIndex = Math.max(0, Math.min(index, courseData.lectures.length - 1));
+    
+    // Update URL with the new lecture index
+    navigate(`/course/${id}/${validIndex}`, { replace: true });
+    setSelectedLecture(validIndex);
+
+    // Scroll to video section
+    window.scrollTo({ top: videoTitleRef.current?.offsetTop - 500, behavior: 'smooth' });
+
+    // Wait for the state to update and the video element to be available
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     if (videoRef.current) {
+      // First load the new video source
       videoRef.current.load();
-      videoRef.current.play().catch(e => console.log("Auto-play prevented", e));
+      
+      // Then attempt to play (must be in a user-triggered event handler)
+      const playPromise = videoRef.current.play();
+      
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => setIsPlaying(true))
+          .catch(error => {
+            console.log("Auto-play prevented:", error);
+            setIsPlaying(false);
+          });
+      }
     }
-    window.scrollTo({ top: videoTitleRef.current?.offsetTop - 100, behavior: 'smooth' });
   };
 
   const toggleWatchLater = (lecture) => {
@@ -118,7 +142,7 @@ const CourseDetailsViewer = () => {
     markCompleted(selectedLecture);
     if (selectedLecture < courseData.lectures.length - 1) {
       setTimeout(() => {
-        setSelectedLecture(selectedLecture + 1);
+        handleWatchClick(selectedLecture + 1);
         showNotification(`Starting next lecture: ${courseData.lectures[selectedLecture + 1].title}`);
       }, 1500);
     } else {
@@ -173,11 +197,27 @@ const CourseDetailsViewer = () => {
         showNotification('Failed to load course details');
       }
     };
-    
+
     if (currentUser?.token) {
       fetchCourse();
     }
   }, [id, currentUser?.token]);
+
+  useEffect(() => {
+    // When course data loads or URL changes, set the selected lecture
+    if (courseData.lectures && courseData.lectures.length > 0) {
+      const initialLectureIndex = lectureIndex ? 
+        Math.min(parseInt(lectureIndex), courseData.lectures.length - 1) : 
+        0;
+      
+      setSelectedLecture(initialLectureIndex);
+      
+      // If URL doesn't have lecture index, redirect to include it
+      if (!lectureIndex) {
+        navigate(`/course/${id}/${initialLectureIndex}`, { replace: true });
+      }
+    }
+  }, [courseData.lectures, lectureIndex, id, navigate]);
 
   if (isLoading) {
     return (
@@ -319,12 +359,13 @@ const CourseDetailsViewer = () => {
                 {totalLectures > 0 ? (
                   <video
                     ref={videoRef}
-                    src={courseData.lectures[selectedLecture]?.video?.url || ""}
+                    src={courseData.lectures[selectedLecture]?.videos[0].url || ""}
                     controls
                     poster={courseData.thumbnail?.url || ""}
                     className="bg-dark"
                     onTimeUpdate={handleVideoProgress}
                     onEnded={handleVideoEnd}
+                    key={selectedLecture}
                   />
                 ) : (
                   <div className="bg-dark d-flex flex-column align-items-center justify-content-center text-white">
@@ -352,15 +393,15 @@ const CourseDetailsViewer = () => {
                       )}
                     </h3>
                     <div className="d-flex gap-2">
-                      <Button 
-                        variant={watchLater.some(l => l._id === courseData.lectures[selectedLecture]._id) ? "warning" : "outline-secondary"} 
+                      <Button
+                        variant={watchLater.some(l => l._id === courseData.lectures[selectedLecture]._id) ? "warning" : "outline-secondary"}
                         size="sm"
                         onClick={() => toggleWatchLater(courseData.lectures[selectedLecture])}
                       >
                         <FontAwesomeIcon icon={faBookmark} />
                       </Button>
-                      <Button 
-                        variant={completedLectures.includes(selectedLecture) ? "success" : "outline-success"} 
+                      <Button
+                        variant={completedLectures.includes(selectedLecture) ? "success" : "outline-success"}
                         size="sm"
                         onClick={() => markCompleted(selectedLecture)}
                       >
@@ -378,7 +419,7 @@ const CourseDetailsViewer = () => {
                   <div className="d-flex gap-3 mb-5">
                     {selectedLecture > 0 && (
                       <Button variant="outline-primary" onClick={() => handleWatchClick(selectedLecture - 1)}>
-                        <FontAwesomeIcon icon={faArrowRight} className="me-2 flip-x" />
+                        <FontAwesomeIcon icon={faArrowLeft} className="me-2 flip-x" />
                         Previous
                       </Button>
                     )}
@@ -447,8 +488,8 @@ const CourseDetailsViewer = () => {
                             <FontAwesomeIcon icon={faPlay} className="me-2" />
                             Watch
                           </Button>
-                          <Button 
-                            variant={watchLater.some(l => l._id === lecture._id) ? "warning" : "outline-secondary"} 
+                          <Button
+                            variant={watchLater.some(l => l._id === lecture._id) ? "warning" : "outline-secondary"}
                             onClick={() => toggleWatchLater(lecture)}
                           >
                             <FontAwesomeIcon icon={faBookmark} className="me-2" />
@@ -490,8 +531,8 @@ const CourseDetailsViewer = () => {
                   </Badge>
                 </div>
                 <ProgressBar now={completionPercentage} label={`${completionPercentage}%`} className="mb-3" />
-                <Button 
-                  variant="primary" 
+                <Button
+                  variant="primary"
                   className="w-100"
                   onClick={() => {
                     if (completedCount < totalLectures) {
@@ -570,9 +611,9 @@ const CourseDetailsViewer = () => {
                     {watchLater.map((lecture) => (
                       <div key={lecture._id} className="list-group-item d-flex justify-content-between align-items-center">
                         <span className="text-truncate" style={{ maxWidth: '70%' }}>{lecture.title || "Lecture"}</span>
-                        <Button 
-                          variant="link" 
-                          size="sm" 
+                        <Button
+                          variant="link"
+                          size="sm"
                           className="text-danger p-0"
                           onClick={() => toggleWatchLater(lecture)}
                         >

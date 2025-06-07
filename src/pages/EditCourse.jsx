@@ -101,10 +101,10 @@ const EditCourse = () => {
           "Content-Type": "multipart/form-data",
         },
       });
-
+      console.log(res.data)
       setCourse((prevCourse) => ({
         ...prevCourse,
-        lectures: [...prevCourse.lectures, res.data.data],
+        lectures: [...prevCourse.lectures, res.data.lecture],
       }));
 
       setNewLecture({ title: '', description: '', videoUrl: '' });
