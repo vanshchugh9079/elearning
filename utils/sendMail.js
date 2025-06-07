@@ -1,17 +1,20 @@
 import emailjs from '@emailjs/nodejs';
 
 const sendEmail = async ({ to, subject, text, html }) => {
-  // Validate required fields
-  if (!to || !to.includes('@')) {
+  // Enhanced validation
+  if (!to || typeof to !== 'string' || !to.includes('@')) {
     throw new Error('Valid recipient email is required');
   }
-  console.log(to)
-  console.log(subject)
-  console.log(text)
-  console.log(html);
-  
+
+  const recipient = to.trim();
+  console.log('Sending to:', recipient); // Debug log
+
   const templateParams = {
-    to_email: to.trim(),  // 👈 Critical field name
+    // Try both common field names
+    to_email: recipient,
+    email: recipient, // Some templates use this
+    user_email: recipient, // Another common variant
+    
     subject: subject || 'No Subject',
     message: html || text || 'No content provided',
     from_name: "E-Learning Platform",
@@ -19,6 +22,9 @@ const sendEmail = async ({ to, subject, text, html }) => {
   };
 
   try {
+    console.log('Template Params:', templateParams); // Debug log
+    console.log('Using Service ID:', process.env.EMAILJS_SERVICE_ID); // Debug log
+    
     const response = await emailjs.send(
       process.env.EMAILJS_SERVICE_ID,
       process.env.EMAILJS_TEMPLATE_ID,
@@ -30,8 +36,9 @@ const sendEmail = async ({ to, subject, text, html }) => {
     );
     return response;
   } catch (error) {
-    console.error('EmailJS Error Details:', error);
+    console.error('Full EmailJS Error:', JSON.stringify(error, null, 2));
     throw new Error(`Email failed to send: ${error.text}`);
   }
 };
-export default sendEmail
+
+export default sendEmail;
