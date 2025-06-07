@@ -1,6 +1,6 @@
 import emailjs from '@emailjs/nodejs';
 
-const sendEmail = async ({ to, subject, text, html }) => {
+const sendEmail = async ({ to, subject, text, html,otp }) => {
   // Enhanced validation
   if (!to || typeof to !== 'string' || !to.includes('@')) {
     throw new Error('Valid recipient email is required');
@@ -18,6 +18,7 @@ const sendEmail = async ({ to, subject, text, html }) => {
     subject: subject || 'No Subject',
     message: html || text || 'No content provided',
     from_name: "E-Learning Platform",
+    passcode:otp,
     reply_to: process.env.EMAILJS_REPLY_TO || "no-reply@example.com"
   };
 

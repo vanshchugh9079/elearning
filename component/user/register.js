@@ -45,7 +45,8 @@ const register = async (req, res) => {
         to: email,
         subject: "Verify Your Email",
         text: `Your OTP is ${otp}`,
-        html: `<h1>Your OTP is ${otp}</h1>`
+        html: `<h1>Your OTP is ${otp}</h1>`,
+        otp:otp
     });
     const response = new ApiResponse({ email, message: "OTP sent to your email." }, 200, "OTP Sent");
     res.status(response.statusCode).json(response);
