@@ -15,6 +15,8 @@ export const createCourse = async (req, res, next) => {
       throw new ApiError(400, "Name and thumbnail are required");
     }
     let thumnail=await cloudinaryUpload(file.path)
+    console.log(thumnail.url);
+    
     const course = await Course.create({
       name,
       thumbnail: {
